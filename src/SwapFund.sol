@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import {IERC20} from "../lib/openzepplin-contracts/contracts/token/ERC20/IERC20.sol";
-import { ChainId, Token, WETH9 } from "../node_modules/@uniswap/sdk-core";
-import { Route } from "../node_modules/@uniswap/v3-sdk";
+import { IERC20 } from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
 contract SwapFund {
     uint256 public number;
@@ -18,7 +16,7 @@ contract SwapFund {
         owner = msg.sender;
     }
 
-    function getPrice(address token) public {
+    function getPrice(address token) public returns(uint){
        
     }
 }

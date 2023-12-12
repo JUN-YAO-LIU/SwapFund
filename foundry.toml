@@ -2,5 +2,9 @@
 src = "src"
 out = "out"
 libs = ["lib"]
+# solc = "0.5.0"
+# auto_detect_solc = true
+
+fs_permissions = [{ access = "read", path = "./"}]
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
