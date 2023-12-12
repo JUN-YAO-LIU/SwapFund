@@ -6,10 +6,45 @@ import {SwapFund} from "../src/SwapFund.sol";
 import {FlashSwapSetUp} from "./helper/FlashSwapSetUp.sol";
 import { IUniswapV2Factory } from "v2-core/interfaces/IUniswapV2Factory.sol";
 
-contract SwapFundTest is FlashSwapSetUp {
+contract SwapFundTest is FlashSwapSetUp,SwapFund {
+
+    address maker = makeAddr("maker");
 
     function setUp() public override {
        super.setUp();
+
+        // mint 100 ETH, 10000 USDC to maker
+        vm.deal(maker, 100 ether);
+        usdc.mint(maker, 10_000 * 10 ** usdc.decimals());
+        matic.mint(maker, 10_000 * 10 ** matic.decimals());
+
+        // maker provide liquidity to wethUsdcPool, wethUsdcSushiPool
+        vm.startPrank(maker);
+        // maker provide 50 ETH, 4000 USDC to wethUsdcPool
+        usdc.approve(address(uniswapV2Router), 4_000 * 10 ** usdc.decimals());
+        matic.approve(address(uniswapV2Router), 4_000 * 10 ** matic.decimals());
+        uniswapV2Router.addLiquidity(
+            address(usdc),
+            address(matic),
+            4_000 * 10 ** usdc.decimals(),
+            4_000 * 10 ** usdc.decimals(),
+            0,
+            0,
+            maker,
+            block.timestamp
+        );
+
+        // maker provide 50 ETH, 6000 USDC to wethUsdcSushiPool
+        // usdc.approve(address(sushiSwapV2Router), 6_000 * 10 ** usdc.decimals());
+        // sushiSwapV2Router.addLiquidityETH{ value: 50 ether }(
+        //     address(usdc),
+        //     6_000 * 10 ** usdc.decimals(),
+        //     0,
+        //     0,
+        //     maker,
+        //     block.timestamp
+        // );
+        vm.stopPrank();
     }
 
     function test_depositIntoMarkets() public {

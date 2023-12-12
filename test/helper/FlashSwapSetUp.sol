@@ -16,10 +16,15 @@ import { TestERC20 } from "../../src/test/TestERC20.sol";
 contract FlashSwapSetUp is Test {
     TestWETH9 public weth;
     TestERC20 public usdc;
+    TestERC20 public matic;
+
     IUniswapV2Factory public uniswapV2Factory;
     IUniswapV2Factory public sushiSwapV2Factory;
+
     IUniswapV2Router01 public uniswapV2Router;
     IUniswapV2Router01 public sushiSwapV2Router;
+
+    IUniswapV2Pair public maticUsdcPool;
     IUniswapV2Pair public wethUsdcPool;
     IUniswapV2Pair public wethUsdcSushiPool;
 
@@ -28,13 +33,17 @@ contract FlashSwapSetUp is Test {
         // vm.writeLine(path, "asdf");
 
         usdc = _create_erc20("USD Coin", "USDC", 6);
+        matic = _create_erc20("Polygon Coin", "MATIC", 6);
         weth = _create_weth9();
+
         uniswapV2Factory = _create_uniswap_v2_factory();
-        sushiSwapV2Factory = _create_uniswap_v2_factory();
-        uniswapV2Router = _create_uniswap_v2_router(address(uniswapV2Factory), address(weth));
-        sushiSwapV2Router = _create_uniswap_v2_router(address(sushiSwapV2Factory), address(weth));
-        wethUsdcPool = _create_pool(address(uniswapV2Factory), address(weth), address(usdc));
-        wethUsdcSushiPool = _create_pool(address(sushiSwapV2Factory), address(weth), address(usdc));
+        // sushiSwapV2Factory = _create_uniswap_v2_factory();
+
+        maticUsdcPool = _create_pool(address(uniswapV2Factory), address(matic), address(usdc));
+        // wethUsdcSushiPool = _create_pool(address(sushiSwapV2Factory), address(weth), address(usdc));
+
+        uniswapV2Router = _create_uniswap_v2_router(address(uniswapV2Factory), address(usdc));
+        // sushiSwapV2Router = _create_uniswap_v2_router(address(sushiSwapV2Factory), address(weth));
 
         vm.label(address(uniswapV2Factory), "UniswapV2Factory");
         vm.label(address(sushiSwapV2Factory), "SushiSwapV2Factory");
@@ -52,8 +61,7 @@ contract FlashSwapSetUp is Test {
     }
 
     function _create_erc20(string memory name, string memory symbol, uint8 decimals) public returns (TestERC20) {
-        usdc = new TestERC20(name, symbol, decimals);
-        return usdc;
+        return new TestERC20(name, symbol, decimals);
     }
 
     function _create_pool(address factory, address tokenA, address tokenB) public returns (IUniswapV2Pair) {
