@@ -4,11 +4,12 @@ pragma solidity ^0.8.17;
 import {Test, console2} from "forge-std/Test.sol";
 import {SwapFund} from "../src/SwapFund.sol";
 import {FlashSwapSetUp} from "./helper/FlashSwapSetUp.sol";
-import { IUniswapV2Factory } from "v2-core/interfaces/IUniswapV2Factory.sol";
+import {IUniswapV2Factory} from "v2-core/interfaces/IUniswapV2Factory.sol";
 
 contract SwapFundTest is FlashSwapSetUp,SwapFund {
 
     address maker = makeAddr("maker");
+    SwapFund swapFund;
 
     function setUp() public override {
        super.setUp();
@@ -44,6 +45,8 @@ contract SwapFundTest is FlashSwapSetUp,SwapFund {
         //     maker,
         //     block.timestamp
         // );
+
+        swapFund = new SwapFund();
         vm.stopPrank();
     }
 
@@ -68,6 +71,9 @@ contract SwapFundTest is FlashSwapSetUp,SwapFund {
     function test_setPrice() public {
     }
 
-     function test_getPrice() public {
+    function test_getPrice() public {
+        // in 10 usdt
+        uint price = swapFund.getPrice(address(maticUsdcPool),10);
+        console2.log("matic price:",price);
     }
 }
