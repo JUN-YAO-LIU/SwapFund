@@ -8,16 +8,35 @@ import { IUniswapV2Pair } from "v2-core/interfaces/IUniswapV2Pair.sol";
 contract SwapFund {
     uint256 public number;
     address public owner;
-    address public USDT;
-    // address public _UNISWAP_FACTORY;
+    address public USDC;
+    address public _UNISWAP_FACTORY;
     
     mapping(address => uint) public poolTokenAmount;
 
     // user => token => amount
     mapping(address => mapping(address => uint)) public ownerAssets;
 
-    constructor(){
+    constructor(address factory,address usdc){
         owner = msg.sender;
+        _UNISWAP_FACTORY = factory;
+        USDC = usdc;
+    }
+
+    function createFund(address[] memory tokens,uint[] memory amounts) public {
+        // token -> pool -> swap
+       
+        for (uint i=0; i<tokens.length; i++) {
+            address poolAddr = IUniswapV2Factory(_UNISWAP_FACTORY).getPair(tokens[i],USDC);
+
+            IERC20(USDC).approve(address(poolAddr),100000);
+
+            IUniswapV2Pair(poolAddr).swap(
+                amounts[i],
+                0,
+                address(this),
+                new bytes(0)
+            );
+        }
     }
 
     function getPrice(address pool,uint256 amountIn) public view returns(uint){
