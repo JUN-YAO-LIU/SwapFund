@@ -4,21 +4,24 @@ pragma solidity ^0.8.13;
 import { IERC20 } from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import { IUniswapV2Factory } from "v2-core/interfaces/IUniswapV2Factory.sol";
 import { IUniswapV2Pair } from "v2-core/interfaces/IUniswapV2Pair.sol";
+import { IUniswapV2Router01 } from "v2-periphery/interfaces/IUniswapV2Router01.sol";
 
 contract SwapFund {
     uint256 public number;
     address public owner;
     address public USDC;
     address public _UNISWAP_FACTORY;
+    address public _UNISWAP_ROUTER;
     
     mapping(address => uint) public poolTokenAmount;
 
     // user => token => amount
     mapping(address => mapping(address => uint)) public ownerAssets;
 
-    constructor(address factory,address usdc){
+    constructor(address factory,address router,address usdc){
         owner = msg.sender;
         _UNISWAP_FACTORY = factory;
+        _UNISWAP_ROUTER = router;
         USDC = usdc;
     }
 
@@ -30,12 +33,14 @@ contract SwapFund {
 
             IERC20(USDC).approve(address(poolAddr),100000);
 
-            IUniswapV2Pair(poolAddr).swap(
-                amounts[i],
-                0,
-                address(this),
-                new bytes(0)
-            );
+            IUniswapV2Router01(_UNISWAP_ROUTER).swapTokensForExactTokens();
+
+            // IUniswapV2Pair(poolAddr).swap(
+            //     amounts[i],
+            //     0,
+            //     address(this),
+            //     new bytes(0)
+            // );
         }
     }
 
