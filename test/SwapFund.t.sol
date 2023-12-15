@@ -64,22 +64,31 @@ contract SwapFundTest is FlashSwapSetUp {
             block.timestamp
         );
 
-        swapFund = new SwapFund(address(uniswapV2Factory),address(usdc));
+        swapFund = new SwapFund(address(uniswapV2Factory),address(uniswapV2Router),address(usdc));
         vm.stopPrank();
 
         vm.startPrank(user1);
         usdc.mint(user1, 10_000_000 * 10 ** usdc.decimals());
         vm.stopPrank();
+
+        vm.label(user1, "User1");
+        vm.label(address(swapFund), "swapFund");
     }
 
     function test_depositIntoMarkets() public {
         vm.startPrank(user1);
+        usdc.approve(address(swapFund), 4_000 * 10 ** usdc.decimals());
+        swapFund.deposit(address(usdc));
+
+        console2.log("swapFund usdc:",usdc.balanceOf(address(swapFund)));
         console2.log("create matic markets:",matic.balanceOf(address(maticUsdcPool)));
+
         address[] memory tokens = new address[](2);
         uint[] memory amounts = new uint[](2);
 
+        // amount in
         amounts[0] = 123;
-        amounts[1] = 567;
+        amounts[1] = 56;
 
         tokens[0] = address(matic);
         tokens[1] = address(sol);
@@ -89,6 +98,9 @@ contract SwapFundTest is FlashSwapSetUp {
         console2.log("create sol markets:",sol.balanceOf(address(swapFund)));
 
         vm.stopPrank();
+
+        assertTrue(matic.balanceOf(address(swapFund)) > 0 , "matic less than zero");
+        assertTrue(sol.balanceOf(address(swapFund)) > 0 ,"sol less than zero");
     }
 
     function test_swapToMultipleTokens() public {

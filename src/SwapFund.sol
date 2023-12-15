@@ -25,24 +25,38 @@ contract SwapFund {
         USDC = usdc;
     }
 
+    function deposit(address token) public {
+        IERC20(token).transferFrom(
+            msg.sender,
+            address(this),
+            IERC20(token).allowance(msg.sender, address(this))
+        );
+    }
+
     function createFund(address[] memory tokens,uint[] memory amounts) public {
-        // token -> pool -> swap
-       
+        address[] memory paths = new address[](2);
         for (uint i=0; i<tokens.length; i++) {
-            address poolAddr = IUniswapV2Factory(_UNISWAP_FACTORY).getPair(tokens[i],USDC);
 
-            IERC20(USDC).approve(address(poolAddr),100000);
+            IERC20(USDC).approve(_UNISWAP_ROUTER,type(uint).max);
+            
+            paths[0] = USDC;
+            paths[1] = tokens[i];
 
-            IUniswapV2Router01(_UNISWAP_ROUTER).swapTokensForExactTokens();
+            address pool = IUniswapV2Factory(_UNISWAP_FACTORY).getPair(paths[0], paths[1]);
+            (uint reserve0,uint reserve1,) =  IUniswapV2Pair(pool).getReserves();
 
-            // IUniswapV2Pair(poolAddr).swap(
-            //     amounts[i],
-            //     0,
-            //     address(this),
-            //     new bytes(0)
-            // );
+            uint tempAmount = IUniswapV2Router01(_UNISWAP_ROUTER).getAmountOut(amounts[i],reserve0,reserve1);
+            IUniswapV2Router01(_UNISWAP_ROUTER).swapExactTokensForTokens(
+                amounts[i],
+                tempAmount, // min out
+                paths,
+                address(this), 
+                block.timestamp
+            );
         }
     }
+
+    function withdrawalFund() public {}
 
     function getPrice(address pool,uint256 amountIn) public view returns(uint){
        // address poolAddr = IUniswapV2Factory(factory).getPair(usdt,token);
