@@ -73,12 +73,10 @@ contract SwapFund {
             paths[1] = token;
 
             address pool = IUniswapV2Factory(_UNISWAP_FACTORY).getPair(paths[0], paths[1]);
-            (uint reserve0,uint reserve1,) =  IUniswapV2Pair(pool).getReserves();
+            (uint reserve0,uint reserve1,) = IUniswapV2Pair(pool).getReserves();
             uint tempAmount = IUniswapV2Router01(_UNISWAP_ROUTER).getAmountOut(amountIn,reserve0,reserve1);
-           // uint256 tempAmount = getPriceWithToken(tempToken,paths[1],amountIn);
+            // uint256 tempAmount = getPriceWithToken(tempToken,paths[1],amountIn);
 
-           
-           
            if(token != tempToken){
                 IERC20(tempToken).approve(_UNISWAP_ROUTER,tempAmount);
                 uint[] memory amountOut = IUniswapV2Router01(_UNISWAP_ROUTER).swapExactTokensForTokens(

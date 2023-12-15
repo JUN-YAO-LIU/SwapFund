@@ -14,20 +14,21 @@ import { TestWETH9 } from "../../src/test/TestWETH9.sol";
 import { TestERC20 } from "../../src/test/TestERC20.sol";
 
 contract FlashSwapSetUp is Test {
-    TestWETH9 public weth;
-    TestERC20 public usdc;
-    TestERC20 public matic;
-    TestERC20 public op;
-    TestERC20 public sol;
-
     IUniswapV2Factory public uniswapV2Factory;
-
     IUniswapV2Router01 public uniswapV2Router;
 
     IUniswapV2Pair public maticUsdcPool;
     IUniswapV2Pair public wethUsdcPool;
     IUniswapV2Pair public opUsdcPool;
     IUniswapV2Pair public solUsdcPool;
+    IUniswapV2Pair public solOpPool;
+    IUniswapV2Pair public maticOpPool;
+
+    TestWETH9 public weth;
+    TestERC20 public usdc;
+    TestERC20 public matic;
+    TestERC20 public op;
+    TestERC20 public sol;
 
     function setUp() public virtual {
 
@@ -42,6 +43,8 @@ contract FlashSwapSetUp is Test {
         maticUsdcPool = _create_pool(address(uniswapV2Factory), address(matic), address(usdc));
         opUsdcPool = _create_pool(address(uniswapV2Factory), address(op), address(usdc));
         solUsdcPool = _create_pool(address(uniswapV2Factory), address(sol), address(usdc));
+        solOpPool = _create_pool(address(uniswapV2Factory), address(sol), address(op));
+        maticOpPool = _create_pool(address(uniswapV2Factory), address(matic), address(op));
 
         uniswapV2Router = _create_uniswap_v2_router(address(uniswapV2Factory), address(usdc));
 
@@ -51,6 +54,8 @@ contract FlashSwapSetUp is Test {
         vm.label(address(maticUsdcPool), "maticUsdcPool");
         vm.label(address(opUsdcPool), "opUsdcPool");
         vm.label(address(solUsdcPool), "solUsdcPool");
+        vm.label(address(solOpPool), "solOpPool");
+        vm.label(address(maticOpPool), "maticOpPool");
 
         vm.label(address(weth), "WETH9");
         vm.label(address(usdc), "USDC");

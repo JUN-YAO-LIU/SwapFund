@@ -65,6 +65,33 @@ contract SwapFundTest is FlashSwapSetUp {
             block.timestamp
         );
 
+
+        op.approve(address(uniswapV2Router), 500 * 10 ** op.decimals());
+        sol.approve(address(uniswapV2Router), 400 * 10 ** sol.decimals());
+        uniswapV2Router.addLiquidity(
+            address(op),
+            address(sol),
+            500 * 10 ** usdc.decimals(),
+            400 * 10 ** usdc.decimals(),
+            0,
+            0,
+            maker,
+            block.timestamp
+        );
+
+        op.approve(address(uniswapV2Router), 700 * 10 ** op.decimals());
+        matic.approve(address(uniswapV2Router), 200 * 10 ** matic.decimals());
+        uniswapV2Router.addLiquidity(
+            address(op),
+            address(matic),
+            700 * 10 ** usdc.decimals(),
+            200 * 10 ** usdc.decimals(),
+            0,
+            0,
+            maker,
+            block.timestamp
+        );
+
         swapFund = new SwapFund(address(uniswapV2Factory),address(uniswapV2Router),address(usdc));
         vm.stopPrank();
 
@@ -165,7 +192,9 @@ contract SwapFundTest is FlashSwapSetUp {
         console2.log("user1 token address 0 :",swapFund.ownerAssetsTokenAddress(user1,0));
         console2.log("user1 token address 1 :",swapFund.ownerAssetsTokenAddress(user1,1));
 
+        console2.log("user1 before op:",op.balanceOf(address(user1)));
         swapFund.withdrawalFund(address(op));
+        console2.log("user1 after op:",op.balanceOf(address(user1)));
         vm.stopPrank();
     }
 
