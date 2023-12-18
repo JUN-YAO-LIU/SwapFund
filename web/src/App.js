@@ -1,7 +1,18 @@
 import logo from './logo.svg';
 import './App.css';
+import { ethers } from "ethers";
 
 function App() {
+  let signer = null;
+  let provider;
+  
+  if (window.ethereum != null) {
+    provider = new ethers.BrowserProvider(window.ethereum)
+    console.log(provider);
+  }
+
+
+
   return (
     <div className="App">
       <header className="App-header">
