@@ -5,10 +5,10 @@ import { IERC20 } from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC
 import { IUniswapV2Factory } from "v2-core/interfaces/IUniswapV2Factory.sol";
 import { IUniswapV2Pair } from "v2-core/interfaces/IUniswapV2Pair.sol";
 import { IUniswapV2Router01 } from "v2-periphery/interfaces/IUniswapV2Router01.sol";
+import { CreditToken } from "./CreditToken.sol";
 
-contract SwapFund {
+contract SwapFund is CreditToken{
     uint256 public number;
-    address public owner;
     address public USDC;
     address public _UNISWAP_FACTORY;
     address public _UNISWAP_ROUTER;
@@ -20,8 +20,25 @@ contract SwapFund {
 
     mapping(address => address[]) public ownerAssetsTokenAddress;
 
-    constructor(address factory,address router,address usdc){
-        owner = msg.sender;
+    // level1 => 20% level2 => 10% level3 => 1%
+    // x < 10, x <  100, x < 1000 credit token
+    mapping(Levels => uint16) public borrowLevel;
+    mapping(RewardStatus => int16) public rewardLevel;
+
+    enum Levels {
+        level1,
+        level2,
+        level3
+    }
+
+    enum RewardStatus {
+        deposit,
+        create,
+        withdrawal,
+        liquidated
+    }
+
+    constructor(address factory,address router,address usdc) CreditToken(1e18) {
         _UNISWAP_FACTORY = factory;
         _UNISWAP_ROUTER = router;
         USDC = usdc;
@@ -100,6 +117,31 @@ contract SwapFund {
        // address poolAddr = IUniswapV2Factory(factory).getPair(usdt,token);
        (uint256 _usdt, uint256 _tokenOut,) = IUniswapV2Pair(pool).getReserves();
        return _getAmountOut(amountIn,_usdt,_tokenOut);
+    }
+
+    function mintCreditToken(uint amount,address sender) private {
+        super.mint(1,sender);
+    }
+
+    function burnCreditToken(uint amount) private {
+
+    }
+
+    function checkBorrowLevel() external returns(uint level){
+
+    }
+
+    function setBorrowLevel() external {
+        borrowLevel[Levels.level1] = 10;
+        borrowLevel[Levels.level2] = 100;
+        borrowLevel[Levels.level3] = 1000;
+    }
+
+     function setRewardLevel() external {
+        rewardLevel[RewardStatus.deposit] = 1;
+        rewardLevel[RewardStatus.withdrawal] = 3;
+        rewardLevel[RewardStatus.create] = 5;
+        rewardLevel[RewardStatus.liquidated] = -10;
     }
 
     function _getAmountIn(
