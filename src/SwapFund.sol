@@ -13,17 +13,22 @@ contract SwapFund is CreditToken{
     address public _UNISWAP_FACTORY;
     address public _UNISWAP_ROUTER;
     
+    // token amount in pool
     mapping(address => uint) public poolTokenAmount;
 
     // user => token => amount
     mapping(address => mapping(address => uint)) public ownerAssets;
 
+    // user => token[]
     mapping(address => address[]) public ownerAssetsTokenAddress;
 
     // level1 => 20% level2 => 10% level3 => 1%
     // x < 10, x <  100, x < 1000 credit token
     mapping(Levels => uint16) public borrowLevel;
-    mapping(RewardStatus => int16) public rewardLevel;
+    mapping(RewardStatus => int16) public rewardStatus;
+    mapping(TakeOffRewardStatus => int16) public rewardStatusTakeOff;
+
+    // uint public collateralfactor;
 
     enum Levels {
         level1,
@@ -34,8 +39,11 @@ contract SwapFund is CreditToken{
     enum RewardStatus {
         deposit,
         create,
-        withdrawal,
-        liquidated
+        withdrawal
+    }
+
+    enum TakeOffRewardStatus {
+       liquidated
     }
 
     constructor(address factory,address router,address usdc) CreditToken(1e18) {
@@ -50,6 +58,8 @@ contract SwapFund is CreditToken{
             address(this),
             IERC20(token).allowance(msg.sender, address(this))
         );
+
+        mintCreditToken(RewardStatus.deposit,msg.sender);
     }
 
     function createFund(address[] memory tokens,uint[] memory amounts) public {
@@ -76,6 +86,8 @@ contract SwapFund is CreditToken{
             ownerAssets[msg.sender][paths[1]] += amountOut[1];
             ownerAssetsTokenAddress[msg.sender].push(paths[1]);
         }
+
+        mintCreditToken(RewardStatus.create,msg.sender);
     }
 
     function withdrawalFund(address token) public {
@@ -105,6 +117,29 @@ contract SwapFund is CreditToken{
                 );
            }
         }
+
+        mintCreditToken(RewardStatus.withdrawal,msg.sender);
+    }
+
+    function borrow(address token,uint amount) public {
+        require(amount > 0 && poolTokenAmount[token] >= amount);
+        // check total borrower assets.
+
+        Levels borrowLevels = checkBorrowLevel();
+
+        uint borrowAmount;
+        if(borrowLevels == Levels.level1){
+            // collateralfactor 80%
+            borrowAmount = amount * 8 * 1e17;
+        }else if(borrowLevels == Levels.level2){
+            // collateralfactor 90%
+            borrowAmount = amount * 9 * 1e17;
+        }else{
+            // collateralfactor 99%
+            borrowAmount = amount * 99 * 1e17;
+        }
+
+        IERC20(token).transfer(msg.sender,borrowAmount);
     }
 
     function getPriceWithToken(address token0,address token1,uint256 amountIn) public view returns(uint){
@@ -119,16 +154,24 @@ contract SwapFund is CreditToken{
        return _getAmountOut(amountIn,_usdt,_tokenOut);
     }
 
-    function mintCreditToken(uint amount,address sender) private {
-        super.mint(1,sender);
+    function mintCreditToken(RewardStatus status,address sender) private {
+        super.mint(uint256(uint16(rewardStatus[status])),sender);
     }
 
-    function burnCreditToken(uint amount) private {
-
+    function burnCreditToken(TakeOffRewardStatus status,address sender) private {
+        super.burn(uint256(uint16(rewardStatusTakeOff[status])),sender);
     }
 
-    function checkBorrowLevel() external returns(uint level){
+    function checkBorrowLevel() public view returns(Levels level){
+       uint creditTokenAmount = super.balanceOf(msg.sender);
 
+       for(int i = 0;i < 3;i++){
+            if(borrowLevel[Levels(i)] > creditTokenAmount){
+                return Levels(i);
+            }
+       }
+
+       return Levels.level1;
     }
 
     function setBorrowLevel() external {
@@ -138,10 +181,10 @@ contract SwapFund is CreditToken{
     }
 
      function setRewardLevel() external {
-        rewardLevel[RewardStatus.deposit] = 1;
-        rewardLevel[RewardStatus.withdrawal] = 3;
-        rewardLevel[RewardStatus.create] = 5;
-        rewardLevel[RewardStatus.liquidated] = -10;
+        rewardStatus[RewardStatus.deposit] = 1;
+        rewardStatus[RewardStatus.withdrawal] = 3;
+        rewardStatus[RewardStatus.create] = 5;
+        rewardStatusTakeOff[TakeOffRewardStatus.liquidated] = 10;
     }
 
     function _getAmountIn(
