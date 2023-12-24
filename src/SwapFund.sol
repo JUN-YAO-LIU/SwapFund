@@ -12,6 +12,13 @@ contract SwapFund is CreditToken{
     address public USDC;
     address public _UNISWAP_FACTORY;
     address public _UNISWAP_ROUTER;
+
+    // borrower => is locked when he borrow assets.
+    mapping(address => bool) public lockBorrowerAssets;
+
+    // borrower address => token => amount
+    mapping(address => mapping(address => uint)) public loanPrice;
+    mapping(address => address) public loanToken;
     
     // token amount in pool
     mapping(address => uint) public poolTokenAmount;
@@ -39,7 +46,10 @@ contract SwapFund is CreditToken{
     enum RewardStatus {
         deposit,
         create,
-        withdrawal
+        withdrawal,
+        borrow,
+        repay,
+        liquidate
     }
 
     enum TakeOffRewardStatus {
@@ -90,6 +100,7 @@ contract SwapFund is CreditToken{
         mintCreditToken(RewardStatus.create,msg.sender);
     }
 
+    // redeem
     function withdrawalFund(address token) public {
         address[] memory paths = new address[](2);
 
@@ -121,25 +132,75 @@ contract SwapFund is CreditToken{
         mintCreditToken(RewardStatus.withdrawal,msg.sender);
     }
 
-    function borrow(address token,uint amount) public {
-        require(amount > 0 && poolTokenAmount[token] >= amount);
-        // check total borrower assets.
-
+    // not design multiple borrow.
+    function borrowMax(address token) public {
         Levels borrowLevels = checkBorrowLevel();
+        // calculate not correct.
+        uint totalAsset = getTotalAssets(msg.sender);
 
-        uint borrowAmount;
+        uint maxBorrowAmount;
         if(borrowLevels == Levels.level1){
             // collateralfactor 80%
-            borrowAmount = amount * 8 * 1e17;
+            maxBorrowAmount = totalAsset * 8 * 1e17;
         }else if(borrowLevels == Levels.level2){
             // collateralfactor 90%
-            borrowAmount = amount * 9 * 1e17;
+            maxBorrowAmount = totalAsset * 9 * 1e17;
         }else{
             // collateralfactor 99%
-            borrowAmount = amount * 99 * 1e17;
+            maxBorrowAmount = totalAsset * 99 * 1e17;
         }
 
-        IERC20(token).transfer(msg.sender,borrowAmount);
+        // check total borrower assets.
+        require(maxBorrowAmount > 0 && poolTokenAmount[token] >= maxBorrowAmount);
+        lockBorrowerAssets[msg.sender] = true;
+
+        loanToken[msg.sender] = token;
+        loanPrice[msg.sender][token] = maxBorrowAmount;
+        mintCreditToken(RewardStatus.borrow,msg.sender);
+        IERC20(token).transfer(msg.sender, maxBorrowAmount);
+    }
+
+    function repayLoan(uint amount,address token) public {
+        require(lockBorrowerAssets[msg.sender]);
+
+        uint repay = loanPrice[msg.sender][loanToken[msg.sender]];
+        require(amount >= repay);
+
+        IERC20(token).transferFrom(
+            msg.sender,
+            address(this),
+            amount
+        );
+
+        lockBorrowerAssets[msg.sender] = false;
+        loanPrice[msg.sender][token] = 0;
+        mintCreditToken(RewardStatus.repay,msg.sender);
+    }
+
+    // 
+    function liquidate(address borrower,address token,uint amount) public {
+        uint repay = loanPrice[borrower][loanToken[borrower]];
+
+        IERC20(token).transferFrom(
+            msg.sender,
+            address(this),
+            amount
+        );
+
+        burnCreditToken(TakeOffRewardStatus.liquidated,borrower)
+        mintCreditToken(RewardStatus.repay,msg.sender);
+    }
+
+    // compound
+    // loan * close factor = loan need to repay, and 
+    // pawn - repay loan * Liquidation incentive = remain pawn.
+    function calculateLoanRepay(address borrower) public returns(uint needLiquidatePrice){
+        // get pawn price, loan price
+        uint loan = getTotalAssets(borrower);
+        uint pawn = getTotalAssets(borrower);
+
+        // pawn price < loan price
+        // calculate repay price : repay all loan.
     }
 
     function getPriceWithToken(address token0,address token1,uint256 amountIn) public view returns(uint){
@@ -174,6 +235,48 @@ contract SwapFund is CreditToken{
        return Levels.level1;
     }
 
+    function simpleGetPrice() public returns(uint amount){}
+
+    function simpleSetPrice(address token,uint price) public returns(uint price){}
+
+    function getTotalAssets(address borrower) private returns(uint total){
+
+        address[] memory paths = new address[](2);
+            
+        for(uint i = 0; ownerAssetsTokenAddress[borrower].length > i;i++){
+            address tempToken = ownerAssetsTokenAddress[borrower][i];
+            uint256 amountIn = ownerAssets[borrower][tempToken];
+
+            paths[0] = USDC;
+            paths[1] = tempToken;
+
+            address pool = IUniswapV2Factory(_UNISWAP_FACTORY).getPair(paths[0], paths[1]);
+            (uint reserve0,uint reserve1,) = IUniswapV2Pair(pool).getReserves();
+            uint tempAmount = IUniswapV2Router01(_UNISWAP_ROUTER).getAmountOut(amountIn,reserve0,reserve1);
+
+            total += tempAmount;
+        }
+    }
+
+    function getLoanAssets(address borrower) private returns(uint total){
+
+        address[] memory paths = new address[](2);
+            
+        for(uint i = 0; ownerAssetsTokenAddress[borrower].length > i;i++){
+            address tempToken = ownerAssetsTokenAddress[borrower][i];
+            uint256 amountIn = ownerAssets[borrower][tempToken];
+
+            paths[0] = USDC;
+            paths[1] = tempToken;
+
+            address pool = IUniswapV2Factory(_UNISWAP_FACTORY).getPair(paths[0], paths[1]);
+            (uint reserve0,uint reserve1,) = IUniswapV2Pair(pool).getReserves();
+            uint tempAmount = IUniswapV2Router01(_UNISWAP_ROUTER).getAmountOut(amountIn,reserve0,reserve1);
+
+            total += tempAmount;
+        }
+    }
+
     function setBorrowLevel() external {
         borrowLevel[Levels.level1] = 10;
         borrowLevel[Levels.level2] = 100;
@@ -182,8 +285,11 @@ contract SwapFund is CreditToken{
 
      function setRewardLevel() external {
         rewardStatus[RewardStatus.deposit] = 1;
-        rewardStatus[RewardStatus.withdrawal] = 3;
-        rewardStatus[RewardStatus.create] = 5;
+        rewardStatus[RewardStatus.withdrawal] = 1;
+        rewardStatus[RewardStatus.borrow] = 3;
+        rewardStatus[RewardStatus.create] = 2;
+        rewardStatus[RewardStatus.repay] = 5;
+        rewardStatus[RewardStatus.liquidate] = 6;
         rewardStatusTakeOff[TakeOffRewardStatus.liquidated] = 10;
     }
 
