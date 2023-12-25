@@ -17,8 +17,9 @@ contract SwapFund is CreditToken{
     mapping(address => bool) public lockBorrowerAssets;
 
     // borrower address => token => amount
-    mapping(address => mapping(address => uint)) public loanPrice;
     mapping(address => address) public loanToken;
+    mapping(address => mapping(address => uint)) public loanPrice;
+   
     
     // token amount in pool
     mapping(address => uint) public poolTokenAmount;
@@ -187,20 +188,24 @@ contract SwapFund is CreditToken{
             amount
         );
 
-        burnCreditToken(TakeOffRewardStatus.liquidated,borrower)
+        burnCreditToken(TakeOffRewardStatus.liquidated,borrower);
         mintCreditToken(RewardStatus.repay,msg.sender);
     }
 
     // compound
     // loan * close factor = loan need to repay, and 
     // pawn - repay loan * Liquidation incentive = remain pawn.
-    function calculateLoanRepay(address borrower) public returns(uint needLiquidatePrice){
+    function calculateLoanRepay(address borrower) public returns(uint,address,uint,address[]){
         // get pawn price, loan price
-        uint loan = getTotalAssets(borrower);
-        uint pawn = getTotalAssets(borrower);
+        (uint loan,address loanToken) = getLoanAssets(borrower);
+        (uint pawn,address pawnTokens) = getTotalAssets(borrower);
 
         // pawn price < loan price
-        // calculate repay price : repay all loan.
+        if(loan > pawn){
+            return (loan,loanToken,pawn,pawnTokens);
+        }
+        
+        retrun (0,address(0),0,address(0));
     }
 
     function getPriceWithToken(address token0,address token1,uint256 amountIn) public view returns(uint){
@@ -239,7 +244,7 @@ contract SwapFund is CreditToken{
 
     function simpleSetPrice(address token,uint price) public returns(uint price){}
 
-    function getTotalAssets(address borrower) private returns(uint total){
+    function getTotalAssets(address borrower) private returns(uint total,address[] memory pawnTokens){
 
         address[] memory paths = new address[](2);
             
@@ -249,6 +254,7 @@ contract SwapFund is CreditToken{
 
             paths[0] = USDC;
             paths[1] = tempToken;
+            pawnTokens.push(tempToken);
 
             address pool = IUniswapV2Factory(_UNISWAP_FACTORY).getPair(paths[0], paths[1]);
             (uint reserve0,uint reserve1,) = IUniswapV2Pair(pool).getReserves();
@@ -258,23 +264,19 @@ contract SwapFund is CreditToken{
         }
     }
 
-    function getLoanAssets(address borrower) private returns(uint total){
-
+    function getLoanAssets(address borrower) private returns(uint total,address borowerToken){
         address[] memory paths = new address[](2);
+        borowerToken = loanToken[borrower];
+        uint256 amountIn =  loanPrice[borrower][borowerToken];
             
-        for(uint i = 0; ownerAssetsTokenAddress[borrower].length > i;i++){
-            address tempToken = ownerAssetsTokenAddress[borrower][i];
-            uint256 amountIn = ownerAssets[borrower][tempToken];
+        paths[0] = USDC;
+        paths[1] = tempToken;
 
-            paths[0] = USDC;
-            paths[1] = tempToken;
+        address pool = IUniswapV2Factory(_UNISWAP_FACTORY).getPair(paths[0], paths[1]);
+        (uint reserve0,uint reserve1,) = IUniswapV2Pair(pool).getReserves();
+        uint tempAmount = IUniswapV2Router01(_UNISWAP_ROUTER).getAmountOut(amountIn,reserve0,reserve1);
 
-            address pool = IUniswapV2Factory(_UNISWAP_FACTORY).getPair(paths[0], paths[1]);
-            (uint reserve0,uint reserve1,) = IUniswapV2Pair(pool).getReserves();
-            uint tempAmount = IUniswapV2Router01(_UNISWAP_ROUTER).getAmountOut(amountIn,reserve0,reserve1);
-
-            total += tempAmount;
-        }
+        total += tempAmount;
     }
 
     function setBorrowLevel() external {
