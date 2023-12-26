@@ -133,23 +133,40 @@ contract SwapFund is CreditToken{
         mintCreditToken(RewardStatus.withdrawal,msg.sender);
     }
 
+    function liquidatePawnAssetsToLiquidater(address borrower) public {
+        address[] memory paths = new address[](2);
+
+        // get all value in the pool
+        for(uint i = 0; ownerAssetsTokenAddress[borrower].length > i;i++){
+            address tempToken = ownerAssetsTokenAddress[borrower][i];
+            uint256 amountIn = ownerAssets[borrower][tempToken];
+
+            ownerAssets[borrower][tempToken] = 0;
+           
+            // to liquidater
+            IERC20(tempToken).transfer(msg.sender,amountIn / 2);
+        }
+    }
+
     // not design multiple borrow.
     function borrowMax(address token) public {
         Levels borrowLevels = checkBorrowLevel();
         // calculate not correct.
-        uint totalAsset = getTotalAssets(msg.sender);
+        uint totalAssetUsd = getTotalAssets(msg.sender);
 
         uint maxBorrowAmount;
         if(borrowLevels == Levels.level1){
             // collateralfactor 80%
-            maxBorrowAmount = totalAsset * 8 * 1e17;
+            maxBorrowAmount = totalAssetUsd * 8 * 1e17;
         }else if(borrowLevels == Levels.level2){
             // collateralfactor 90%
-            maxBorrowAmount = totalAsset * 9 * 1e17;
+            maxBorrowAmount = totalAssetUsd * 9 * 1e17;
         }else{
             // collateralfactor 99%
-            maxBorrowAmount = totalAsset * 99 * 1e17;
+            maxBorrowAmount = totalAssetUsd * 99 * 1e17;
         }
+
+        // price:Token/USD
 
         // check total borrower assets.
         require(maxBorrowAmount > 0 && poolTokenAmount[token] >= maxBorrowAmount);
@@ -161,32 +178,34 @@ contract SwapFund is CreditToken{
         IERC20(token).transfer(msg.sender, maxBorrowAmount);
     }
 
-    function repayLoan(uint amount,address token) public {
-        require(lockBorrowerAssets[msg.sender]);
+    function repayLoan(uint amount,address token,address borrower) public {
+        require(lockBorrowerAssets[borrower]);
 
-        uint repay = loanPrice[msg.sender][loanToken[msg.sender]];
+        uint repay = loanPrice[borrower][loanToken[borrower]];
         require(amount >= repay);
 
         IERC20(token).transferFrom(
-            msg.sender,
+            borrower,
             address(this),
             amount
         );
 
-        lockBorrowerAssets[msg.sender] = false;
-        loanPrice[msg.sender][token] = 0;
-        mintCreditToken(RewardStatus.repay,msg.sender);
+        lockBorrowerAssets[borrower] = false;
+        loanPrice[borrower][token] = 0;
+        mintCreditToken(RewardStatus.repay,borrower);
     }
 
-    // 
-    function liquidate(address borrower,address token,uint amount) public {
-        uint repay = loanPrice[borrower][loanToken[borrower]];
+    function liquidateBorrower(address borrower,address token,uint amount) public {
+       (uint loanPrice,address loanToken,uint pawn,address[] memory pawnToken) = calculateLoanRepay(borrower);
+        
+        // loan amount address
+        uint loanAmount;
 
-        IERC20(token).transferFrom(
-            msg.sender,
-            address(this),
-            amount
-        );
+        // repay Loan
+        repayLoan(loanAmount,loanToken,borrower);
+
+        // get all stacking assets to pool and lender
+        liquidatePawnAssetsToLiquidater(borrower);
 
         burnCreditToken(TakeOffRewardStatus.liquidated,borrower);
         mintCreditToken(RewardStatus.repay,msg.sender);
@@ -195,17 +214,17 @@ contract SwapFund is CreditToken{
     // compound
     // loan * close factor = loan need to repay, and 
     // pawn - repay loan * Liquidation incentive = remain pawn.
-    function calculateLoanRepay(address borrower) public returns(uint,address,uint,address[]){
+    function calculateLoanRepay(address borrower) public returns(uint,address,uint,address[] memory){
         // get pawn price, loan price
         (uint loan,address loanToken) = getLoanAssets(borrower);
-        (uint pawn,address pawnTokens) = getTotalAssets(borrower);
+        (uint pawn,address[] memory pawnTokens) = getTotalAssets(borrower);
 
         // pawn price < loan price
         if(loan > pawn){
             return (loan,loanToken,pawn,pawnTokens);
         }
         
-        retrun (0,address(0),0,address(0));
+        return (0,address(0),0,pawnTokens);
     }
 
     function getPriceWithToken(address token0,address token1,uint256 amountIn) public view returns(uint){
@@ -242,7 +261,7 @@ contract SwapFund is CreditToken{
 
     function simpleGetPrice() public returns(uint amount){}
 
-    function simpleSetPrice(address token,uint price) public returns(uint price){}
+    // function simpleSetPrice(address token,uint price) public returns(uint price){}
 
     function getTotalAssets(address borrower) private returns(uint total,address[] memory pawnTokens){
 
@@ -270,7 +289,7 @@ contract SwapFund is CreditToken{
         uint256 amountIn =  loanPrice[borrower][borowerToken];
             
         paths[0] = USDC;
-        paths[1] = tempToken;
+        paths[1] = borowerToken;
 
         address pool = IUniswapV2Factory(_UNISWAP_FACTORY).getPair(paths[0], paths[1]);
         (uint reserve0,uint reserve1,) = IUniswapV2Pair(pool).getReserves();
