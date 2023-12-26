@@ -7,7 +7,7 @@ import {FlashSwapSetUp} from "./helper/FlashSwapSetUp.sol";
 import {IUniswapV2Factory} from "v2-core/interfaces/IUniswapV2Factory.sol";
 
 contract SwapFundTest is FlashSwapSetUp {
-
+    
     address maker = makeAddr("maker");
     address user1 = makeAddr("user1");
     address user2 = makeAddr("user2");
@@ -138,8 +138,8 @@ contract SwapFundTest is FlashSwapSetUp {
         uint beforeSol = sol.balanceOf(address(swapFund));
 
         swapFund.createFund(tokens,amounts);
-        console2.log("create matic markets:",matic.balanceOf(address(swapFund)));
-        console2.log("create sol markets:",sol.balanceOf(address(swapFund)));
+        // console2.log("create matic markets:",matic.balanceOf(address(swapFund)));
+        // console2.log("create sol markets:",sol.balanceOf(address(swapFund)));
 
         uint afterMatic = matic.balanceOf(address(swapFund));
         uint afterSol = sol.balanceOf(address(swapFund));
@@ -147,8 +147,8 @@ contract SwapFundTest is FlashSwapSetUp {
         assertTrue(afterMatic > 0 , "matic less than zero");
         assertTrue(afterSol > 0 ,"sol less than zero");
 
-        console2.log("user matic:",swapFund.ownerAssets(user1,address(matic)));
-        console2.log("user sol:",swapFund.ownerAssets(user1,address(sol)));
+        // console2.log("user matic:",swapFund.ownerAssets(user1,address(matic)));
+        // console2.log("user sol:",swapFund.ownerAssets(user1,address(sol)));
 
         // console2.log("user1 fund token address:",swapFund.ownerAssetsTokenAddress(user1,1));
 
@@ -191,14 +191,51 @@ contract SwapFundTest is FlashSwapSetUp {
         vm.stopPrank();
 
         vm.startPrank(user1);
-        console2.log("user2 op:",swapFund.ownerAssets(user2,address(op)));
-        console2.log("user1 token address 0 :",swapFund.ownerAssetsTokenAddress(user1,0));
-        console2.log("user1 token address 1 :",swapFund.ownerAssetsTokenAddress(user1,1));
+        // console2.log("user2 op:",swapFund.ownerAssets(user2,address(op)));
+        // console2.log("user1 token address 0 :",swapFund.ownerAssetsTokenAddress(user1,0));
+        // console2.log("user1 token address 1 :",swapFund.ownerAssetsTokenAddress(user1,1));
 
-        console2.log("user1 before op:",op.balanceOf(address(user1)));
+        // console2.log("user1 before op:",op.balanceOf(address(user1)));
         swapFund.withdrawalFund(address(op));
-        console2.log("user1 after op:",op.balanceOf(address(user1)));
+        // console2.log("user1 after op:",op.balanceOf(address(user1)));
         vm.stopPrank();
+    }
+
+    function test_borrow() public {
+
+        // add Liquidity 
+        test_swapToMultipleTokens();
+
+        vm.startPrank(user2);
+        usdc.approve(address(swapFund), 10_000 * 10 ** usdc.decimals());
+        swapFund.deposit(address(usdc));
+
+        address[] memory tokens = new address[](1);
+        uint[] memory amounts = new uint[](1);
+
+        // amount in
+        amounts[0] = 10_000;
+        tokens[0] = address(op);
+        
+        swapFund.createFund(tokens,amounts);
+        vm.stopPrank();
+
+        // borrow
+        vm.startPrank(user1);
+
+        // console2.log("op : ",swapFund.poolTokenAmount(address(op)));
+        // console2.log("before user borrow op : ",op.balanceOf(user1));
+        swapFund.borrowMax(address(op));
+        // console2.log("after user borrow op : ",op.balanceOf(user1));
+        // console2.log("user1 ct : ",swapFund.balanceOf(user1));
+        // console2.log(swapFund.symbol());
+
+        vm.stopPrank();
+        assertGe(op.balanceOf(user1), 0);
+        assertEq(swapFund.symbol(),"CT");
+        assertGe(swapFund.balanceOf(user1),0);
+        // console2.log(uint(SwapFund.RewardStatus.liquidate));
+        // console2.log(swapFund.rewardStatus(SwapFund.RewardStatus.liquidate));
     }
 
     function test_getPricesFromUni() public {
@@ -215,8 +252,8 @@ contract SwapFundTest is FlashSwapSetUp {
 
     function test_getPrice() public {
         // in 10 usdt
-        console2.log("matic price:",swapFund.getPrice(address(maticUsdcPool),10));
-        console2.log("op price:",swapFund.getPrice(address(opUsdcPool),20));
-        console2.log("sol price:",swapFund.getPrice(address(solUsdcPool),123));
+        // console2.log("matic price:",swapFund.getPrice(address(maticUsdcPool),10));
+        // console2.log("op price:",swapFund.getPrice(address(opUsdcPool),20));
+        // console2.log("sol price:",swapFund.getPrice(address(solUsdcPool),123));
     }
 }

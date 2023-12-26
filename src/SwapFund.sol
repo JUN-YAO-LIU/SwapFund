@@ -6,12 +6,15 @@ import { IUniswapV2Factory } from "v2-core/interfaces/IUniswapV2Factory.sol";
 import { IUniswapV2Pair } from "v2-core/interfaces/IUniswapV2Pair.sol";
 import { IUniswapV2Router01 } from "v2-periphery/interfaces/IUniswapV2Router01.sol";
 import { CreditToken } from "./CreditToken.sol";
+import {ERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
+// import "../lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 
-contract SwapFund is CreditToken{
+contract SwapFund is ERC20 {
     uint256 public number;
     address public USDC;
     address public _UNISWAP_FACTORY;
     address public _UNISWAP_ROUTER;
+    uint constant initialSupply = 1e18;
 
     // borrower => is locked when he borrow assets.
     mapping(address => bool) public lockBorrowerAssets;
@@ -33,8 +36,8 @@ contract SwapFund is CreditToken{
     // level1 => 20% level2 => 10% level3 => 1%
     // x < 10, x <  100, x < 1000 credit token
     mapping(Levels => uint16) public borrowLevel;
-    mapping(RewardStatus => int16) public rewardStatus;
-    mapping(TakeOffRewardStatus => int16) public rewardStatusTakeOff;
+    mapping(RewardStatus => uint16) public rewardStatus;
+    mapping(TakeOffRewardStatus => uint16) public rewardStatusTakeOff;
 
     // uint public collateralfactor;
 
@@ -57,10 +60,24 @@ contract SwapFund is CreditToken{
        liquidated
     }
 
-    constructor(address factory,address router,address usdc) CreditToken(1e18) {
+    constructor(
+        address factory,
+        address router,
+        address usdc) ERC20("CreditToken","CT") {
         _UNISWAP_FACTORY = factory;
         _UNISWAP_ROUTER = router;
         USDC = usdc;
+        _mint(msg.sender, initialSupply);
+        setRewardLevel();
+        setBorrowLevel();
+    }
+
+     function mint(uint amount,address to) internal  {
+        _mint(to,amount);
+    }
+
+    function burn(uint amount,address to) internal {
+        _burn(to,amount);
     }
 
     function deposit(address token) public {
@@ -166,10 +183,12 @@ contract SwapFund is CreditToken{
             maxBorrowAmount = totalAssetUsd * 99 * 1e17;
         }
 
+        maxBorrowAmount = maxBorrowAmount / 1e18;
+
         // price:Token/USD
 
         // check total borrower assets.
-        require(maxBorrowAmount > 0 && poolTokenAmount[token] >= maxBorrowAmount);
+        require(maxBorrowAmount > 0 && poolTokenAmount[token] >= maxBorrowAmount,"pool must be than Max Borrow Amount.");
         lockBorrowerAssets[msg.sender] = true;
 
         loanToken[msg.sender] = token;
@@ -196,7 +215,7 @@ contract SwapFund is CreditToken{
     }
 
     function liquidateBorrower(address borrower,address token,uint amount) public {
-       (uint loanPrice,address loanToken,uint pawn,address[] memory pawnToken) = calculateLoanRepay(borrower);
+       (uint loanPrice,address loanToken) = calculateLoanRepay(borrower);
         
         // loan amount address
         uint loanAmount;
@@ -214,17 +233,18 @@ contract SwapFund is CreditToken{
     // compound
     // loan * close factor = loan need to repay, and 
     // pawn - repay loan * Liquidation incentive = remain pawn.
-    function calculateLoanRepay(address borrower) public returns(uint,address,uint,address[] memory){
+    function calculateLoanRepay(address borrower) public returns(uint,address){
+        
         // get pawn price, loan price
-        (uint loan,address loanToken) = getLoanAssets(borrower);
-        (uint pawn,address[] memory pawnTokens) = getTotalAssets(borrower);
+        (uint loanPrice,uint loanAmount,address loanToken) = getLoanAssets(borrower);
+        (uint pawnPrice,) = getTotalAssets(borrower);
 
         // pawn price < loan price
-        if(loan > pawn){
-            return (loan,loanToken,pawn,pawnTokens);
+        if(loanPrice > pawnPrice){
+            return (loanAmount,loanToken);
         }
         
-        return (0,address(0),0,pawnTokens);
+        return (0,address(0));
     }
 
     function getPriceWithToken(address token0,address token1,uint256 amountIn) public view returns(uint){
@@ -240,11 +260,11 @@ contract SwapFund is CreditToken{
     }
 
     function mintCreditToken(RewardStatus status,address sender) private {
-        super.mint(uint256(uint16(rewardStatus[status])),sender);
+        mint(rewardStatus[status],sender);
     }
 
     function burnCreditToken(TakeOffRewardStatus status,address sender) private {
-        super.burn(uint256(uint16(rewardStatusTakeOff[status])),sender);
+        burn(uint256(uint16(rewardStatusTakeOff[status])),sender);
     }
 
     function checkBorrowLevel() public view returns(Levels level){
@@ -263,9 +283,10 @@ contract SwapFund is CreditToken{
 
     // function simpleSetPrice(address token,uint price) public returns(uint price){}
 
-    function getTotalAssets(address borrower) private returns(uint total,address[] memory pawnTokens){
+    function getTotalAssets(address borrower) private returns(uint,address[] memory){
 
         address[] memory paths = new address[](2);
+        uint total;
             
         for(uint i = 0; ownerAssetsTokenAddress[borrower].length > i;i++){
             address tempToken = ownerAssetsTokenAddress[borrower][i];
@@ -273,7 +294,6 @@ contract SwapFund is CreditToken{
 
             paths[0] = USDC;
             paths[1] = tempToken;
-            pawnTokens.push(tempToken);
 
             address pool = IUniswapV2Factory(_UNISWAP_FACTORY).getPair(paths[0], paths[1]);
             (uint reserve0,uint reserve1,) = IUniswapV2Pair(pool).getReserves();
@@ -281,11 +301,13 @@ contract SwapFund is CreditToken{
 
             total += tempAmount;
         }
+
+        return (total,ownerAssetsTokenAddress[borrower]);
     }
 
-    function getLoanAssets(address borrower) private returns(uint total,address borowerToken){
+    function getLoanAssets(address borrower) private returns(uint,uint,address){
         address[] memory paths = new address[](2);
-        borowerToken = loanToken[borrower];
+        address borowerToken = loanToken[borrower];
         uint256 amountIn =  loanPrice[borrower][borowerToken];
             
         paths[0] = USDC;
@@ -293,18 +315,18 @@ contract SwapFund is CreditToken{
 
         address pool = IUniswapV2Factory(_UNISWAP_FACTORY).getPair(paths[0], paths[1]);
         (uint reserve0,uint reserve1,) = IUniswapV2Pair(pool).getReserves();
-        uint tempAmount = IUniswapV2Router01(_UNISWAP_ROUTER).getAmountOut(amountIn,reserve0,reserve1);
+        uint price = IUniswapV2Router01(_UNISWAP_ROUTER).getAmountOut(amountIn,reserve0,reserve1);
 
-        total += tempAmount;
+        return (price,amountIn,borowerToken);
     }
 
-    function setBorrowLevel() external {
+    function setBorrowLevel() private {
         borrowLevel[Levels.level1] = 10;
         borrowLevel[Levels.level2] = 100;
         borrowLevel[Levels.level3] = 1000;
     }
 
-     function setRewardLevel() external {
+     function setRewardLevel() private {
         rewardStatus[RewardStatus.deposit] = 1;
         rewardStatus[RewardStatus.withdrawal] = 1;
         rewardStatus[RewardStatus.borrow] = 3;
