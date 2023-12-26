@@ -226,7 +226,7 @@ contract SwapFundTest is FlashSwapSetUp {
         // console2.log("op : ",swapFund.poolTokenAmount(address(op)));
         // console2.log("before user borrow op : ",op.balanceOf(user1));
         swapFund.borrowMax(address(op));
-        // console2.log("after user borrow op : ",op.balanceOf(user1));
+        console2.log("after user borrow op : ",op.balanceOf(user1));
         // console2.log("user1 ct : ",swapFund.balanceOf(user1));
         // console2.log(swapFund.symbol());
 
@@ -236,6 +236,26 @@ contract SwapFundTest is FlashSwapSetUp {
         assertGe(swapFund.balanceOf(user1),0);
         // console2.log(uint(SwapFund.RewardStatus.liquidate));
         // console2.log(swapFund.rewardStatus(SwapFund.RewardStatus.liquidate));
+    }
+
+    function test_repay() public {
+        test_borrow();
+        vm.startPrank(user1);
+
+        uint beforeCT = swapFund.balanceOf(user1);
+
+        // console2.log(swapFund.loanPrice(user1,address(op)));
+        // console2.log("user approve op : ",op.balanceOf(user1));
+
+        op.approve(address(swapFund), op.balanceOf(user1));
+        swapFund.repayLoan(op.balanceOf(user1),address(op),user1);
+
+        uint afterCT = swapFund.balanceOf(user1);
+        vm.stopPrank();
+
+        assertEq(swapFund.lockBorrowerAssets(user1),false);
+        assertEq(swapFund.loanPrice(user1,address(op)),0);
+        assertGe(afterCT,beforeCT);
     }
 
     function test_getPricesFromUni() public {

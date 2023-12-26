@@ -198,10 +198,10 @@ contract SwapFund is ERC20 {
     }
 
     function repayLoan(uint amount,address token,address borrower) public {
-        require(lockBorrowerAssets[borrower]);
+        require(lockBorrowerAssets[borrower],"borrower's assets is lock.");
 
         uint repay = loanPrice[borrower][loanToken[borrower]];
-        require(amount >= repay);
+        require(amount >= repay,"repay price is insufficient");
 
         IERC20(token).transferFrom(
             borrower,
@@ -264,7 +264,7 @@ contract SwapFund is ERC20 {
     }
 
     function burnCreditToken(TakeOffRewardStatus status,address sender) private {
-        burn(uint256(uint16(rewardStatusTakeOff[status])),sender);
+        burn(rewardStatusTakeOff[status],sender);
     }
 
     function checkBorrowLevel() public view returns(Levels level){
