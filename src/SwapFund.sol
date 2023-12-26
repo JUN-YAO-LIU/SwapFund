@@ -152,7 +152,7 @@ contract SwapFund is CreditToken{
     function borrowMax(address token) public {
         Levels borrowLevels = checkBorrowLevel();
         // calculate not correct.
-        uint totalAssetUsd = getTotalAssets(msg.sender);
+        (uint totalAssetUsd,)= getTotalAssets(msg.sender);
 
         uint maxBorrowAmount;
         if(borrowLevels == Levels.level1){
