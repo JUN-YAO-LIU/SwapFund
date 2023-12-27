@@ -317,14 +317,30 @@ contract SwapFundTest is FlashSwapSetUp {
         (uint loanAmount,address loanToken) = swapFund.calculateLoanRepay(user1);
         (uint totalAssetUsd,)= swapFund.getTotalAssets(user1);
        
-        console2.log("user1 CT amount:",swapFund.balanceOf(user1));
-        console2.log("checkBorrowLevel:",swapFund.checkBorrowLevel());
-        console2.log("loanAmount:",loanAmount);
-        console2.log("totalAssetUsd:",totalAssetUsd);
+        // console2.log("user1 CT amount:",swapFund.balanceOf(user1));
+        // console2.log("checkBorrowLevel:",swapFund.checkBorrowLevel());
+        // console2.log("loanAmount:",loanAmount);
+        // console2.log("totalAssetUsd:",totalAssetUsd);
 
         vm.stopPrank();
 
         assertGe(loanAmount,0);
+    }
+
+    function test_liquidateBorrower() public {
+        test_calculateLoanRepay_needLiquedated();
+
+        vm.startPrank(user2);
+        op.mint(user2, 10000 * 10 ** op.decimals());
+        op.approve(address(swapFund),type(uint).max);
+
+        (uint loanAmount,address loanToken) = swapFund.calculateLoanRepay(user1);
+
+        swapFund.liquidateBorrower(user1,loanAmount,loanToken);
+        vm.stopPrank();
+
+        assertEq(swapFund.lockBorrowerAssets(user1),false);
+        assertEq(swapFund.loanPrice(user1,address(op)),0);
     }
 
     function test_getPricesFromUni() public {

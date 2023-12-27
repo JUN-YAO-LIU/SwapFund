@@ -59,6 +59,9 @@ contract FlashSwapSetUp is Test {
 
         vm.label(address(weth), "WETH9");
         vm.label(address(usdc), "USDC");
+        vm.label(address(matic), "MATIC");
+        vm.label(address(op), "OP");
+        vm.label(address(sol), "SOL");
     }
 
     function _create_weth9() public returns (TestWETH9) {

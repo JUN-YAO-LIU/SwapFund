@@ -86,6 +86,42 @@ contract SwapFund is ERC20 {
         mintCreditToken(RewardStatus.deposit,msg.sender);
     }
 
+    function createFundAndLiquidate(address[] memory tokens,uint[] memory amounts,address borrower) public {
+
+        (uint loanAmount,address loanToken) = swapFund.calculateLoanRepay(borrower);
+        address[] memory paths = new address[](2);
+        IERC20(USDC).approve(_UNISWAP_ROUTER,type(uint).max);
+
+        for (uint i=0; i<tokens.length; i++) {
+            
+            paths[0] = USDC;
+            paths[1] = tokens[i];
+
+            address pool = IUniswapV2Factory(_UNISWAP_FACTORY).getPair(paths[0], paths[1]);
+            (uint reserve0,uint reserve1,) =  IUniswapV2Pair(pool).getReserves();
+
+            uint tempAmount = IUniswapV2Router01(_UNISWAP_ROUTER).getAmountOut(amounts[i],reserve0,reserve1);
+            uint[] memory amountOut = IUniswapV2Router01(_UNISWAP_ROUTER).swapExactTokensForTokens(
+                amounts[i],
+                tempAmount, // min out
+                paths,
+                address(this), 
+                block.timestamp
+            );
+
+            // whether liquidate the other loan.
+            if(loanToken == paths[1] && amountOut[1] > loanAmount){
+                liquidateBorrower(borrower,loanAmount,loanToken);
+                amountOut[1] = amountOut[1] - loanAmount;
+            }
+
+            ownerAssets[msg.sender][paths[1]] += amountOut[1];
+            ownerAssetsTokenAddress[msg.sender].push(paths[1]);
+        }
+
+        mintCreditToken(RewardStatus.create,msg.sender);
+    }
+
     function createFund(address[] memory tokens,uint[] memory amounts) public {
         address[] memory paths = new address[](2);
         IERC20(USDC).approve(_UNISWAP_ROUTER,type(uint).max);
@@ -181,11 +217,18 @@ contract SwapFund is ERC20 {
         IERC20(token).transfer(msg.sender, borrowTokenAmount);
     }
 
-    function liquidateBorrower(address borrower,address token,uint amount) public {
-       (uint loanAmount,address loanToken) = calculateLoanRepay(borrower);
+    function liquidateBorrower(address borrower,uint loanAmount,address loanToken) public {
+        require(lockBorrowerAssets[borrower],"borrower's assets is lock.");
 
         // repay Loan
-        repayLoan(loanAmount,loanToken,borrower);
+        IERC20(loanToken).transferFrom(
+            msg.sender,
+            address(this),
+            loanAmount
+        );
+
+        lockBorrowerAssets[borrower] = false;
+        loanPrice[borrower][loanToken] = 0;
 
         // get all stacking assets to pool and lender
         liquidatePawnAssetsToLiquidater(borrower);
@@ -260,7 +303,11 @@ contract SwapFund is ERC20 {
     }
 
     function burnCreditToken(TakeOffRewardStatus status,address sender) private {
-        burn(rewardStatusTakeOff[status],sender);
+        if(rewardStatusTakeOff[status] > balanceOf(sender)){
+            burn(balanceOf(sender),sender);
+        }else{
+            burn(rewardStatusTakeOff[status],sender);
+        }
     }
 
     function checkBorrowLevel() public view returns(uint){
