@@ -258,6 +258,75 @@ contract SwapFundTest is FlashSwapSetUp {
         assertGe(afterCT,beforeCT);
     }
 
+    function test_calculateLoanRepay_notNeedLiquedated() public {
+        test_borrow();
+        vm.startPrank(user1);
+
+        // uint beforeCT = swapFund.balanceOf(user1);
+        (uint loanAmount,address loanToken) = swapFund.calculateLoanRepay(user1);
+        (uint totalAssetUsd,)= swapFund.getTotalAssets(user1);
+       
+        console2.log("checkBorrowLevel:",swapFund.balanceOf(user1));
+        console2.log("checkBorrowLevel:",swapFund.checkBorrowLevel());
+        console2.log("loanAmount:",loanAmount);
+        console2.log("totalAssetUsd:",totalAssetUsd);
+
+        // op.approve(address(swapFund), loanAmount);
+        // swapFund.repayLoan(loanAmount,loanToken,user1);
+
+        // uint afterCT = swapFund.balanceOf(user1);
+        vm.stopPrank();
+
+        assertEq(loanToken,address(0));
+        assertEq(loanAmount,0);
+    }
+
+    function test_calculateLoanRepay_needLiquedated() public {
+        test_borrow();
+
+        // user2 large swap out the usdt let the matic price down.
+        vm.startPrank(user2);
+        matic.mint(user2, 10000 * 10 ** matic.decimals());
+        usdc.approve(address(uniswapV2Router),type(uint).max);
+
+        (uint reserve00,uint reserve01,) = maticUsdcPool.getReserves();
+        uint beforeMatic = uniswapV2Router.getAmountOut(10000 * 10 ** matic.decimals(),reserve01,reserve00);
+
+        address[] memory paths = new address[](2);
+        paths[0] = address(usdc);
+        paths[1] = address(matic);
+
+        uint[] memory amountOut = uniswapV2Router.swapExactTokensForTokens(
+                10000 * 10 ** matic.decimals(),
+                beforeMatic, // min out
+                paths,
+                user2, 
+                block.timestamp
+            );
+
+        vm.stopPrank();
+
+        // (uint reserve0,uint reserve1,) = maticUsdcPool.getReserves();
+        // uint afterMatic = uniswapV2Router.getAmountOut(swapFund.ownerAssets(user1,address(matic)),reserve1,reserve0);
+        // console2.log("reserve0",reserve0);
+        // console2.log("reserve1",reserve1);
+        // console2.log("afterMatic",afterMatic);
+
+        vm.startPrank(user1);
+        // uint beforeCT = swapFund.balanceOf(user1);
+        (uint loanAmount,address loanToken) = swapFund.calculateLoanRepay(user1);
+        (uint totalAssetUsd,)= swapFund.getTotalAssets(user1);
+       
+        console2.log("user1 CT amount:",swapFund.balanceOf(user1));
+        console2.log("checkBorrowLevel:",swapFund.checkBorrowLevel());
+        console2.log("loanAmount:",loanAmount);
+        console2.log("totalAssetUsd:",totalAssetUsd);
+
+        vm.stopPrank();
+
+        assertGe(loanAmount,0);
+    }
+
     function test_getPricesFromUni() public {
     }
 

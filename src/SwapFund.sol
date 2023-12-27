@@ -22,10 +22,6 @@ contract SwapFund is ERC20 {
     // borrower address => token => amount
     mapping(address => address) public loanToken;
     mapping(address => mapping(address => uint)) public loanPrice;
-   
-    
-    // token amount in pool
-    mapping(address => uint) public poolTokenAmount;
 
     // user => token => amount
     mapping(address => mapping(address => uint)) public ownerAssets;
@@ -35,7 +31,7 @@ contract SwapFund is ERC20 {
 
     // level1 => 20% level2 => 10% level3 => 1%
     // x < 10, x <  100, x < 1000 credit token
-    mapping(Levels => uint16) public borrowLevel;
+    uint[] public borrowLevel;
     mapping(RewardStatus => uint16) public rewardStatus;
     mapping(TakeOffRewardStatus => uint16) public rewardStatusTakeOff;
 
@@ -110,7 +106,8 @@ contract SwapFund is ERC20 {
                 block.timestamp
             );
 
-            poolTokenAmount[paths[1]] += amountOut[1];
+            // whether liquidate the other loan.
+
             ownerAssets[msg.sender][paths[1]] += amountOut[1];
             ownerAssetsTokenAddress[msg.sender].push(paths[1]);
         }
@@ -150,51 +147,51 @@ contract SwapFund is ERC20 {
         mintCreditToken(RewardStatus.withdrawal,msg.sender);
     }
 
-    function liquidatePawnAssetsToLiquidater(address borrower) public {
-        address[] memory paths = new address[](2);
-
-        // get all value in the pool
-        for(uint i = 0; ownerAssetsTokenAddress[borrower].length > i;i++){
-            address tempToken = ownerAssetsTokenAddress[borrower][i];
-            uint256 amountIn = ownerAssets[borrower][tempToken];
-
-            ownerAssets[borrower][tempToken] = 0;
-           
-            // to liquidater
-            IERC20(tempToken).transfer(msg.sender,amountIn / 2);
-        }
-    }
-
     // not design multiple borrow.
     function borrowMax(address token) public {
-        Levels borrowLevels = checkBorrowLevel();
+        uint borrowLevels = checkBorrowLevel();
         // calculate not correct.
         (uint totalAssetUsd,)= getTotalAssets(msg.sender);
 
-        uint maxBorrowAmount;
-        if(borrowLevels == Levels.level1){
+        uint maxBorrowUsdt;
+        if(borrowLevels == 0){
             // collateralfactor 80%
-            maxBorrowAmount = totalAssetUsd * 8 * 1e17;
-        }else if(borrowLevels == Levels.level2){
+            maxBorrowUsdt = totalAssetUsd * 8 * 1e17;
+        }else if(borrowLevels == 1){
             // collateralfactor 90%
-            maxBorrowAmount = totalAssetUsd * 9 * 1e17;
+            maxBorrowUsdt = totalAssetUsd * 9 * 1e17;
         }else{
             // collateralfactor 99%
-            maxBorrowAmount = totalAssetUsd * 99 * 1e17;
+            maxBorrowUsdt = totalAssetUsd * 99 * 1e16;
         }
 
-        maxBorrowAmount = maxBorrowAmount / 1e18;
+        maxBorrowUsdt = maxBorrowUsdt / 1e18;
+        require(totalAssetUsd > maxBorrowUsdt,"user's total assets must be large than borrow.");
 
         // price:Token/USD
+        uint borrowTokenAmount = getPriceWithToken(USDC,token,maxBorrowUsdt);
 
         // check total borrower assets.
-        require(maxBorrowAmount > 0 && poolTokenAmount[token] >= maxBorrowAmount,"pool must be than Max Borrow Amount.");
+        require(borrowTokenAmount > 0 && IERC20(token).balanceOf(address(this)) >= borrowTokenAmount,"pool must be than Max Borrow Amount.");
         lockBorrowerAssets[msg.sender] = true;
 
         loanToken[msg.sender] = token;
-        loanPrice[msg.sender][token] = maxBorrowAmount;
+        loanPrice[msg.sender][token] = borrowTokenAmount;
         mintCreditToken(RewardStatus.borrow,msg.sender);
-        IERC20(token).transfer(msg.sender, maxBorrowAmount);
+        IERC20(token).transfer(msg.sender, borrowTokenAmount);
+    }
+
+    function liquidateBorrower(address borrower,address token,uint amount) public {
+       (uint loanAmount,address loanToken) = calculateLoanRepay(borrower);
+
+        // repay Loan
+        repayLoan(loanAmount,loanToken,borrower);
+
+        // get all stacking assets to pool and lender
+        liquidatePawnAssetsToLiquidater(borrower);
+
+        burnCreditToken(TakeOffRewardStatus.liquidated,borrower);
+        mintCreditToken(RewardStatus.repay,msg.sender);
     }
 
     function repayLoan(uint amount,address token,address borrower) public {
@@ -214,20 +211,19 @@ contract SwapFund is ERC20 {
         mintCreditToken(RewardStatus.repay,borrower);
     }
 
-    function liquidateBorrower(address borrower,address token,uint amount) public {
-       (uint loanPrice,address loanToken) = calculateLoanRepay(borrower);
-        
-        // loan amount address
-        uint loanAmount;
+    function liquidatePawnAssetsToLiquidater(address borrower) public {
+        address[] memory paths = new address[](2);
 
-        // repay Loan
-        repayLoan(loanAmount,loanToken,borrower);
+        // get all value in the pool
+        for(uint i = 0; ownerAssetsTokenAddress[borrower].length > i;i++){
+            address tempToken = ownerAssetsTokenAddress[borrower][i];
+            uint256 amountIn = ownerAssets[borrower][tempToken];
 
-        // get all stacking assets to pool and lender
-        liquidatePawnAssetsToLiquidater(borrower);
-
-        burnCreditToken(TakeOffRewardStatus.liquidated,borrower);
-        mintCreditToken(RewardStatus.repay,msg.sender);
+            ownerAssets[borrower][tempToken] = 0;
+           
+            // to liquidater
+            IERC20(tempToken).transfer(msg.sender,amountIn / 2);
+        }
     }
 
     // compound
@@ -249,8 +245,8 @@ contract SwapFund is ERC20 {
 
     function getPriceWithToken(address token0,address token1,uint256 amountIn) public view returns(uint){
        address pool = IUniswapV2Factory(_UNISWAP_FACTORY).getPair(token0,token1);
-       (uint256 _tokenIn, uint256 _tokenOut,) = IUniswapV2Pair(pool).getReserves();
-       return _getAmountOut(amountIn,_tokenIn,_tokenOut);
+       (uint256 reserve0, uint256 reserve1,) = IUniswapV2Pair(pool).getReserves();
+       return IUniswapV2Router01(_UNISWAP_ROUTER).getAmountOut(amountIn,reserve0,reserve1);
     }
 
     function getPrice(address pool,uint256 amountIn) public view returns(uint){
@@ -267,23 +263,23 @@ contract SwapFund is ERC20 {
         burn(rewardStatusTakeOff[status],sender);
     }
 
-    function checkBorrowLevel() public view returns(Levels level){
-       uint creditTokenAmount = super.balanceOf(msg.sender);
+    function checkBorrowLevel() public view returns(uint){
+       uint creditTokenAmount = balanceOf(msg.sender);
 
-       for(int i = 0;i < 3;i++){
-            if(borrowLevel[Levels(i)] > creditTokenAmount){
-                return Levels(i);
+       for(uint i = 0;i < borrowLevel.length;i++){
+            if(borrowLevel[i] > creditTokenAmount){
+                return i;
             }
        }
 
-       return Levels.level1;
+       return 2;
     }
 
     function simpleGetPrice() public returns(uint amount){}
 
     // function simpleSetPrice(address token,uint price) public returns(uint price){}
 
-    function getTotalAssets(address borrower) private returns(uint,address[] memory){
+    function getTotalAssets(address borrower) public returns(uint,address[] memory){
 
         address[] memory paths = new address[](2);
         uint total;
@@ -291,13 +287,13 @@ contract SwapFund is ERC20 {
         for(uint i = 0; ownerAssetsTokenAddress[borrower].length > i;i++){
             address tempToken = ownerAssetsTokenAddress[borrower][i];
             uint256 amountIn = ownerAssets[borrower][tempToken];
-
+ 
             paths[0] = USDC;
             paths[1] = tempToken;
 
             address pool = IUniswapV2Factory(_UNISWAP_FACTORY).getPair(paths[0], paths[1]);
             (uint reserve0,uint reserve1,) = IUniswapV2Pair(pool).getReserves();
-            uint tempAmount = IUniswapV2Router01(_UNISWAP_ROUTER).getAmountOut(amountIn,reserve0,reserve1);
+            uint tempAmount = IUniswapV2Router01(_UNISWAP_ROUTER).getAmountOut(amountIn,reserve1,reserve0);
 
             total += tempAmount;
         }
@@ -315,15 +311,15 @@ contract SwapFund is ERC20 {
 
         address pool = IUniswapV2Factory(_UNISWAP_FACTORY).getPair(paths[0], paths[1]);
         (uint reserve0,uint reserve1,) = IUniswapV2Pair(pool).getReserves();
-        uint price = IUniswapV2Router01(_UNISWAP_ROUTER).getAmountOut(amountIn,reserve0,reserve1);
+        uint price = IUniswapV2Router01(_UNISWAP_ROUTER).getAmountOut(amountIn,reserve1,reserve0);
 
         return (price,amountIn,borowerToken);
     }
 
     function setBorrowLevel() private {
-        borrowLevel[Levels.level1] = 10;
-        borrowLevel[Levels.level2] = 100;
-        borrowLevel[Levels.level3] = 1000;
+        borrowLevel.push(10);
+        borrowLevel.push(100);
+        borrowLevel.push(1000);
     }
 
      function setRewardLevel() private {
