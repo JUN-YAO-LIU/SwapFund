@@ -325,6 +325,8 @@ contract SwapFundTest is FlashSwapSetUp {
         vm.stopPrank();
 
         assertGe(loanAmount,0);
+        assertEq(swapFund.lockBorrowerAssets(user1),true);
+        assertGe(swapFund.loanPrice(user1,address(op)),0);
     }
 
     function test_liquidateBorrower() public {
@@ -343,22 +345,30 @@ contract SwapFundTest is FlashSwapSetUp {
         assertEq(swapFund.loanPrice(user1,address(op)),0);
     }
 
-    function test_getPricesFromUni() public {
-    }
+    function test_createFundAndLiquidate() public {
+        test_calculateLoanRepay_needLiquedated();
 
-    function test_getMarketSupportTokens() public {
-    }
+        vm.startPrank(user2);
+        usdc.approve(address(swapFund), 10_000 * 10 ** usdc.decimals());
+        swapFund.deposit(address(usdc));
 
-    function test_setTokenInMarket() public {
-    }
+        address[] memory tokens = new address[](2);
+        uint[] memory amounts = new uint[](2);
 
-    function test_setPrice() public {
-    }
+        amounts[0] = 2000;
+        amounts[1] = 8000;
 
-    function test_getPrice() public {
-        // in 10 usdt
-        // console2.log("matic price:",swapFund.getPrice(address(maticUsdcPool),10));
-        // console2.log("op price:",swapFund.getPrice(address(opUsdcPool),20));
-        // console2.log("sol price:",swapFund.getPrice(address(solUsdcPool),123));
+        tokens[0] = address(sol);
+        tokens[1] = address(op);
+
+        uint beforeLiquidate = matic.balanceOf(user2);
+        swapFund.createFundAndLiquidate(tokens,amounts,user1);
+        uint afterLiquidate = matic.balanceOf(user2);
+
+        vm.stopPrank();
+
+        assertGe(afterLiquidate,beforeLiquidate,"after reward than before");
+        assertEq(swapFund.lockBorrowerAssets(user1),false);
+        assertEq(swapFund.loanPrice(user1,address(op)),0);
     }
 }

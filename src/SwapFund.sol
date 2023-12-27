@@ -88,11 +88,11 @@ contract SwapFund is ERC20 {
 
     function createFundAndLiquidate(address[] memory tokens,uint[] memory amounts,address borrower) public {
 
-        (uint loanAmount,address loanToken) = swapFund.calculateLoanRepay(borrower);
+        (uint loanAmount,address loanToken) = calculateLoanRepay(borrower);
         address[] memory paths = new address[](2);
         IERC20(USDC).approve(_UNISWAP_ROUTER,type(uint).max);
 
-        for (uint i=0; i<tokens.length; i++) {
+        for (uint i=0; i < tokens.length; i++) {
             
             paths[0] = USDC;
             paths[1] = tokens[i];
@@ -111,7 +111,7 @@ contract SwapFund is ERC20 {
 
             // whether liquidate the other loan.
             if(loanToken == paths[1] && amountOut[1] > loanAmount){
-                liquidateBorrower(borrower,loanAmount,loanToken);
+                liquidateBorrowerWhenCreateFund(borrower,loanToken);
                 amountOut[1] = amountOut[1] - loanAmount;
             }
 
@@ -215,6 +215,17 @@ contract SwapFund is ERC20 {
         loanPrice[msg.sender][token] = borrowTokenAmount;
         mintCreditToken(RewardStatus.borrow,msg.sender);
         IERC20(token).transfer(msg.sender, borrowTokenAmount);
+    }
+
+    function liquidateBorrowerWhenCreateFund(address borrower,address loanToken) public {
+        lockBorrowerAssets[borrower] = false;
+        loanPrice[borrower][loanToken] = 0;
+
+        // get all stacking assets to pool and lender
+        liquidatePawnAssetsToLiquidater(borrower);
+
+        burnCreditToken(TakeOffRewardStatus.liquidated,borrower);
+        mintCreditToken(RewardStatus.repay,msg.sender);
     }
 
     function liquidateBorrower(address borrower,uint loanAmount,address loanToken) public {
@@ -323,8 +334,6 @@ contract SwapFund is ERC20 {
     }
 
     function simpleGetPrice() public returns(uint amount){}
-
-    // function simpleSetPrice(address token,uint price) public returns(uint price){}
 
     function getTotalAssets(address borrower) public returns(uint,address[] memory){
 
