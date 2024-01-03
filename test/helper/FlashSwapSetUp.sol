@@ -46,7 +46,7 @@ contract FlashSwapSetUp is Test {
         solOpPool = _create_pool(address(uniswapV2Factory), address(sol), address(op));
         maticOpPool = _create_pool(address(uniswapV2Factory), address(matic), address(op));
 
-        uniswapV2Router = _create_uniswap_v2_router(address(uniswapV2Factory), address(usdc));
+        uniswapV2Router = _create_uniswap_v2_router(address(uniswapV2Factory), address(weth));
 
         vm.label(address(uniswapV2Factory), "UniswapV2Factory");
         vm.label(address(uniswapV2Router), "UniswapV2Router");

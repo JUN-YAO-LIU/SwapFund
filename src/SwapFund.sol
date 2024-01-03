@@ -7,14 +7,18 @@ import { IUniswapV2Pair } from "v2-core/interfaces/IUniswapV2Pair.sol";
 import { IUniswapV2Router01 } from "v2-periphery/interfaces/IUniswapV2Router01.sol";
 import { CreditToken } from "./CreditToken.sol";
 import {ERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
+import {TestPrice} from "../src/test/TestPrice.sol";
 // import "../lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 
-contract SwapFund is ERC20 {
+contract SwapFund is ERC20 , TestPrice{
+    address public owner;
     uint256 public number;
     address public USDC;
     address public _UNISWAP_FACTORY;
     address public _UNISWAP_ROUTER;
     uint constant initialSupply = 1e18;
+
+    bool private isTestPrice = false;
 
     // borrower => is locked when he borrow assets.
     mapping(address => bool) public lockBorrowerAssets;
@@ -92,30 +96,37 @@ contract SwapFund is ERC20 {
         address[] memory paths = new address[](2);
         IERC20(USDC).approve(_UNISWAP_ROUTER,type(uint).max);
 
+        uint tempAmount;
+        uint tempAmountOut;
         for (uint i=0; i < tokens.length; i++) {
             
             paths[0] = USDC;
             paths[1] = tokens[i];
 
-            address pool = IUniswapV2Factory(_UNISWAP_FACTORY).getPair(paths[0], paths[1]);
-            (uint reserve0,uint reserve1,) =  IUniswapV2Pair(pool).getReserves();
-
-            uint tempAmount = IUniswapV2Router01(_UNISWAP_ROUTER).getAmountOut(amounts[i],reserve0,reserve1);
-            uint[] memory amountOut = IUniswapV2Router01(_UNISWAP_ROUTER).swapExactTokensForTokens(
-                amounts[i],
-                tempAmount, // min out
-                paths,
-                address(this), 
-                block.timestamp
-            );
-
+            if(isTestPrice){
+                tempAmountOut = simpleGetPrice(paths[1]) * amounts[i];
+            }else{
+                address pool = IUniswapV2Factory(_UNISWAP_FACTORY).getPair(paths[0], paths[1]);
+                (uint reserve0,uint reserve1,) =  IUniswapV2Pair(pool).getReserves();
+                tempAmount = IUniswapV2Router01(_UNISWAP_ROUTER).getAmountOut(amounts[i],reserve0,reserve1);
+                
+                uint[] memory amountOut = IUniswapV2Router01(_UNISWAP_ROUTER).swapExactTokensForTokens(
+                    amounts[i],
+                    tempAmount, // min out
+                    paths,
+                    address(this),
+                    block.timestamp
+                );
+                tempAmountOut = amountOut[1];
+            }
+            
             // whether liquidate the other loan.
-            if(loanToken == paths[1] && amountOut[1] > loanAmount){
+            if(loanToken == paths[1] && tempAmountOut > loanAmount){
                 liquidateBorrowerWhenCreateFund(borrower,loanToken);
-                amountOut[1] = amountOut[1] - loanAmount;
+                tempAmountOut = tempAmountOut - loanAmount;
             }
 
-            ownerAssets[msg.sender][paths[1]] += amountOut[1];
+            ownerAssets[msg.sender][paths[1]] += tempAmountOut;
             ownerAssetsTokenAddress[msg.sender].push(paths[1]);
         }
 
@@ -303,12 +314,6 @@ contract SwapFund is ERC20 {
        return IUniswapV2Router01(_UNISWAP_ROUTER).getAmountOut(amountIn,reserve0,reserve1);
     }
 
-    function getPrice(address pool,uint256 amountIn) public view returns(uint){
-       // address poolAddr = IUniswapV2Factory(factory).getPair(usdt,token);
-       (uint256 _usdt, uint256 _tokenOut,) = IUniswapV2Pair(pool).getReserves();
-       return _getAmountOut(amountIn,_usdt,_tokenOut);
-    }
-
     function mintCreditToken(RewardStatus status,address sender) private {
         mint(rewardStatus[status],sender);
     }
@@ -333,7 +338,13 @@ contract SwapFund is ERC20 {
        return 2;
     }
 
-    function simpleGetPrice() public returns(uint amount){}
+    function simpleGetPrice(address token) public returns(uint amount){
+       return tokens[token];
+    }
+
+    function simpleSetPrice(address token,uint amount) public {
+       setPrice(token,amount);
+    }
 
     function getTotalAssets(address borrower) public returns(uint,address[] memory){
 
@@ -388,29 +399,7 @@ contract SwapFund is ERC20 {
         rewardStatusTakeOff[TakeOffRewardStatus.liquidated] = 10;
     }
 
-    function _getAmountIn(
-        uint256 amountOut,
-        uint256 reserveIn,
-        uint256 reserveOut
-    ) internal pure returns (uint256 amountIn) {
-        require(amountOut > 0, "UniswapV2Library: INSUFFICIENT_OUTPUT_AMOUNT");
-        require(reserveIn > 0 && reserveOut > 0, "UniswapV2Library: INSUFFICIENT_LIQUIDITY");
-        uint256 numerator = reserveIn * amountOut * 1000;
-        uint256 denominator = (reserveOut - amountOut) * 997;
-        amountIn = numerator / denominator + 1;
-    }
-
-    // copy from UniswapV2Library
-    function _getAmountOut(
-        uint256 amountIn,
-        uint256 reserveIn,
-        uint256 reserveOut
-    ) internal pure returns (uint256 amountOut) {
-        require(amountIn > 0, "UniswapV2Library: INSUFFICIENT_INPUT_AMOUNT");
-        require(reserveIn > 0 && reserveOut > 0, "UniswapV2Library: INSUFFICIENT_LIQUIDITY");
-        uint256 amountInWithFee = amountIn * 997;
-        uint256 numerator = amountInWithFee * reserveOut;
-        uint256 denominator = reserveIn * 1000 + amountInWithFee;
-        amountOut = numerator / denominator;
+    function setIsTestPirce(bool b)public{
+        isTestPrice = b;
     }
 }

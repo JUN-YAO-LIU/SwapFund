@@ -93,6 +93,10 @@ contract SwapFundTest is FlashSwapSetUp {
         );
 
         swapFund = new SwapFund(address(uniswapV2Factory),address(uniswapV2Router),address(usdc));
+        swapFund.simpleSetPrice(address(op),4);
+        swapFund.simpleSetPrice(address(usdc),1); 
+        swapFund.simpleSetPrice(address(matic),2);
+        swapFund.simpleSetPrice(address(sol),100);
         vm.stopPrank();
 
         vm.startPrank(user1);
