@@ -41,7 +41,7 @@ contract SwapFundScript is Script {
         sol = new TestERC20("SOL", "SOL", 6);
         weth = new TestWETH9();
 
-        uniswapV2Factory = IUniswapV2Factory(0xc9f18c25Cfca2975d6eD18Fc63962EBd1083e978);
+        uniswapV2Factory = _create_uniswap_v2_factory();
 
         maticUsdcPool = _create_pool(address(uniswapV2Factory), address(matic), address(usdc));
         opUsdcPool = _create_pool(address(uniswapV2Factory), address(op), address(usdc));
@@ -49,7 +49,7 @@ contract SwapFundScript is Script {
         solOpPool = _create_pool(address(uniswapV2Factory), address(sol), address(op));
         maticOpPool = _create_pool(address(uniswapV2Factory), address(matic), address(op));
 
-        uniswapV2Router = IUniswapV2Router01(0x86dcd3293C53Cf8EFd7303B57beb2a3F671dDE98);
+        uniswapV2Router = _create_uniswap_v2_router(address(uniswapV2Factory), address(weth));
 
         usdc.mint(owner, 10_000_000 * 10 ** usdc.decimals());
         matic.mint(owner, 10_000_000 * 10 ** matic.decimals());
@@ -80,7 +80,7 @@ contract SwapFundScript is Script {
             0,
             0,
             owner,
-            block.timestamp + 1800
+            block.timestamp+ 1800
         );
 
         usdc.approve(address(uniswapV2Router), 4_000 * 10 ** usdc.decimals());
@@ -93,7 +93,7 @@ contract SwapFundScript is Script {
             0,
             0,
             owner,
-            block.timestamp + 1800
+            block.timestamp+ 1800
         );
 
 
@@ -107,7 +107,7 @@ contract SwapFundScript is Script {
             0,
             0,
             owner,
-            block.timestamp + 1800
+            block.timestamp+ 1800
         );
 
         op.approve(address(uniswapV2Router), 700 * 10 ** op.decimals());
@@ -120,7 +120,7 @@ contract SwapFundScript is Script {
             0,
             0,
             owner,
-            block.timestamp + 1800
+            block.timestamp+ 1800
         );
 
        SwapFund swapFund = new SwapFund(address(uniswapV2Factory),address(uniswapV2Router),address(usdc));
@@ -133,5 +133,38 @@ contract SwapFundScript is Script {
     function _create_pool(address factory, address tokenA, address tokenB) public returns (IUniswapV2Pair) {
         address pool = IUniswapV2Factory(factory).createPair(tokenA, tokenB);
         return IUniswapV2Pair(pool);
+    }
+
+    function _create_uniswap_v2_factory() internal returns (IUniswapV2Factory) {
+        string memory path = string(
+            abi.encodePacked(vm.projectRoot(), "/test/v2-core-build/UniswapV2Factory.json")
+        );
+        string memory artifact = vm.readFile(path);
+        bytes memory creationCode = vm.parseBytes(abi.decode(vm.parseJson(artifact, ".bytecode"), (string)));
+        creationCode = abi.encodePacked(creationCode, abi.encode(address(0)));
+        address anotherAddress;
+
+        assembly {
+            anotherAddress := create(0, add(creationCode, 0x20), mload(creationCode))
+        }
+
+        return IUniswapV2Factory(anotherAddress);
+    }
+
+    function _create_uniswap_v2_router(address factory, address weth9) internal returns (IUniswapV2Router01) {
+        string memory path = string(
+            abi.encodePacked(vm.projectRoot(), "/test/v2-periphery-build/UniswapV2Router01.json")
+        );
+        string memory artifact = vm.readFile(path);
+        bytes memory creationCode = vm.parseBytes(abi.decode(vm.parseJson(artifact, ".bytecode"), (string)));
+
+        creationCode = abi.encodePacked(creationCode, abi.encode(factory), abi.encode(weth9));
+        address anotherAddress;
+
+        assembly {
+            anotherAddress := create(0, add(creationCode, 0x20), mload(creationCode))
+        }
+
+        return IUniswapV2Router01(anotherAddress);
     }
 }
