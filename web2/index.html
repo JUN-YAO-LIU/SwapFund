@@ -51,7 +51,15 @@
 
 <body>
     <div class="bodyPad">
-        <h1 class="text-center">Deposit</h1>
+        <h1 class="text-center">Deposit 
+            <small>
+                <span class="btn-group">
+                    <button id="connectBtn" class="btn btn-mini">
+                        Connect MetaMask
+                    </button>
+                </span>
+            </small>
+        </h1>
         <ul class="nav justify-content-center">
             <li class="nav-item">
                 <a class="nav-link active" aria-current="page" href="/web2/index.html">Deposit</a>
@@ -68,12 +76,12 @@
 
         <div class="mt-5">
             <h5>OWNER Address</h5>
-            <p>0xc8Bd59d60961bEdb12c95079250d3075b9328a2d</p>
+            <p id="ownerAddress"></p>
 
             <div class="d-flex flex-row">
                 <div class="p-3">
                     <div>USDC</div>
-                    <p>12313112323</p>
+                    <p id="usdcAmount">0</p>
                 </div>
                 <div class="p-3">
                     <div>MATIC</div>
@@ -139,7 +147,7 @@
                 </div>
             </div>
             <div class="text-right">
-                <button type="submit" class="btn btn-secondary mt-3">Deposit</button>
+                <button id="testBtn" type="button" class="btn btn-secondary mt-3">Deposit</button>
             </div>
         </form>
     </div>
