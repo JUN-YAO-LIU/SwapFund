@@ -13,8 +13,8 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
         crossorigin="anonymous"></script>
-    <script src="./init.js"></script>
-     <style type="text/css">
+    <script type="module" src="./withdrawal.js"></script>
+    <style type="text/css">
         body {
             background-color: #f0f0f2;
             margin: 0;
@@ -51,7 +51,13 @@
 
 <body>
     <div class="bodyPad">
-        <h1 class="text-center">Withdrawal</h1>
+        <h1 class="text-center">Withdrawal<small>
+                <span class="btn-group">
+                    <button id="connectBtn" class="btn btn-mini">
+                        Connect MetaMask
+                    </button>
+                </span>
+            </small></h1>
         <ul class="nav justify-content-center">
             <li class="nav-item">
                 <a class="nav-link active" aria-current="page" href="/web2/index.html">Deposit</a>
@@ -68,27 +74,26 @@
 
         <div class="mt-5">
             <h5>OWNER Address</h5>
-            <p>0xc8Bd59d60961bEdb12c95079250d3075b9328a2d</p>
+            <p id="ownerAddress2"></p>
 
             <div class="d-flex flex-row">
                 <div class="p-3">
                     <div>USDC</div>
-                    <p>12313112323</p>
+                    <p id="usdcAmount">0</p>
                 </div>
                 <div class="p-3">
                     <div>MATIC</div>
-                    <p>11313212323</p>
+                    <p id="maticAmount">0</p>
                 </div>
                 <div class="p-3">
                     <div>SOL</div>
-                    <p>12313132323</p>
+                    <p id="solAmount">0</p>
                 </div>
                 <div class="p-3">
                     <div>OP</div>
-                    <p>1231313212</p>
+                    <p id="opAmount">0</p>
                 </div>
             </div>
-
         </div>
 
         <hr />
@@ -97,21 +102,21 @@
             <div class="form-check">
                 <input class="form-check-input" type="radio" name="flexRadioDefault" id="flexRadioDefault1">
                 <label class="form-check-label" for="flexRadioDefault1">
-                  MATIC
+                    MATIC
                 </label>
-              </div>
-              <div class="form-check">
+            </div>
+            <div class="form-check">
                 <input class="form-check-input" type="radio" name="flexRadioDefault" id="flexRadioDefault2" checked>
                 <label class="form-check-label" for="flexRadioDefault2">
-                  SOL
+                    SOL
                 </label>
-              </div>
-              <div class="form-check">
+            </div>
+            <div class="form-check">
                 <input class="form-check-input" type="radio" name="flexRadioDefault" id="flexRadioDefault2" checked>
                 <label class="form-check-label" for="flexRadioDefault2">
-                  OP
+                    OP
                 </label>
-              </div>
+            </div>
             <div class="text-right">
                 <button type="submit" class="btn btn-secondary mt-3">Withdrawal</button>
             </div>
