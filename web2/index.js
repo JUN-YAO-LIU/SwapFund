@@ -23,7 +23,7 @@ document.getElementById("connectBtn").onclick = async() => {
     // MetaMask requires requesting permission to connect users accounts
     await provider.send("eth_requestAccounts",[])
     signer = provider.getSigner()
-    let myAddress = await signer.getAddress()
+    myAddress = await signer.getAddress()
 
     // 0x570D01A5Bd431BdC206038f3cff8E17B22AA3662
     let usdc = new ethers.Contract(usdcAddr, dataTestERC20.abi, signer)
@@ -44,7 +44,8 @@ document.getElementById("connectBtn").onclick = async() => {
 
 // const signer = provider.getSigner("0x570D01A5Bd431BdC206038f3cff8E17B22AA3662")
 document.getElementById("testBtn").onclick = async() => {
-    const swapFund = new ethers.Contract("0x38A7410130C3aE2CC783A6B8461a1101955967FC", data.abi, signer)
+    let swapFund = new ethers.Contract(swapFundAddr, data.abi, signer)
+    let usdc = new ethers.Contract(usdcAddr, dataTestERC20.abi, signer)
 
     const name = await swapFund.name()
     const symbol = await swapFund.symbol()
@@ -56,6 +57,39 @@ document.getElementById("testBtn").onclick = async() => {
     console.log(symbol)
     console.log(decimals)
     console.log(totalSupply)
+
+    let checkmatic = document.getElementById("checkmatic");
+    let checkop = document.getElementById("checkop"); 
+    let checksol = document.getElementById("checksol");
+
+    let inputmatic = document.getElementById("inputmatic").value;
+    let inputop = document.getElementById("inputop").value; 
+    let inputsol = document.getElementById("inputsol").value;
+
+    await usdc.approve(swapFundAddr, usdc.balanceOf(myAddress));
+
+    let tokens = [];
+    let address = [];
+    if(checkmatic.checked == true){
+        address.push(maticAddr)
+        tokens.push(parseInt(inputmatic))
+    }
+
+    if(checkop.checked == true){
+        address.push(opAddr)
+        tokens.push(parseInt(inputop))
+    }
+
+    if(checksol.checked == true){
+        address.push(solAddr)
+        tokens.push(parseInt(inputsol))
+    }
+
+    console.log(address)
+    console.log(tokens)
+
+    await swapFund.deposit(usdcAddr);
+    await swapFund.createFund(address,tokens);
 }
 
 // document.getElementById("ownerAddress").value=;

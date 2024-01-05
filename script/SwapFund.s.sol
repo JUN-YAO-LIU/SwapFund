@@ -125,8 +125,6 @@ contract SwapFundScript is Script {
 
        SwapFund swapFund = new SwapFund(address(uniswapV2Factory),address(uniswapV2Router),address(usdc));
        
-
-
         vm.stopBroadcast();
     }
 

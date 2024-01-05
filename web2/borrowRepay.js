@@ -8,6 +8,12 @@ if (typeof window.ethereum !== 'undefined') {
 
 const provider = new ethers.providers.Web3Provider(window.ethereum)
 var signer;
+var myAddress;
+const swapFundAddr = "0x38A7410130C3aE2CC783A6B8461a1101955967FC"
+const usdcAddr = "0x3E826335541543C1234bA0aA1C52c593ae6460a1"
+const opAddr = "0x336187F5EE513abaDfB8E3480928589fE6C96488"
+const solAddr = "0x9240771F06Ad0E8767B8B76596c359005b5eFBd7"
+const maticAddr = "0x111c70bF4A7bbfc755809aA888f92367b99192aD"
 
 // async function usdc(){
 //     return new ethers.Contract("0x3E826335541543C1234bA0aA1C52c593ae6460a1", dataTestERC20.abi, signer)
@@ -23,14 +29,11 @@ document.getElementById("connectBtn").onclick = async() => {
     let usdc = new ethers.Contract("0x3E826335541543C1234bA0aA1C52c593ae6460a1", dataTestERC20.abi, signer)
     let usdtBalance = await usdc.balanceOf(myAddress);
 
-    let matic = new ethers.Contract("0x111c70bF4A7bbfc755809aA888f92367b99192aD", dataTestERC20.abi, signer)
-    let maticBalance = await matic.balanceOf(myAddress);
+    let swapFund = new ethers.Contract(swapFundAddr, data.abi, signer)
 
-    let sol = new ethers.Contract("0x9240771F06Ad0E8767B8B76596c359005b5eFBd7", dataTestERC20.abi, signer)
-    let solBalance = await sol.balanceOf(myAddress);
-
-    let op = new ethers.Contract("0x336187F5EE513abaDfB8E3480928589fE6C96488", dataTestERC20.abi, signer)
-    let opBalance = await op.balanceOf(myAddress);
+    let maticBalance = await swapFund.ownerAssets(myAddress,maticAddr)
+    let solBalance = await swapFund.ownerAssets(myAddress,solAddr)
+    let opBalance = await swapFund.ownerAssets(myAddress,opAddr)
 
     document.getElementById('ownerAddress').innerHTML = myAddress
     document.getElementById('usdcAmount').innerHTML = usdtBalance
