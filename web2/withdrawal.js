@@ -23,7 +23,7 @@ document.getElementById("connectBtn").onclick = async() => {
     // MetaMask requires requesting permission to connect users accounts
     await provider.send("eth_requestAccounts",[])
     signer = provider.getSigner()
-    let myAddress = await signer.getAddress()
+    myAddress = await signer.getAddress()
 
     // 0x570D01A5Bd431BdC206038f3cff8E17B22AA3662
     let usdc = new ethers.Contract(usdcAddr, dataTestERC20.abi, signer)
@@ -43,7 +43,7 @@ document.getElementById("connectBtn").onclick = async() => {
 }
 
 // const signer = provider.getSigner("0x570D01A5Bd431BdC206038f3cff8E17B22AA3662")
-document.getElementById("testBtn").onclick = async() => {
+document.getElementById("widrawalBtn").onclick = async() => {
     const swapFund = new ethers.Contract("0x38A7410130C3aE2CC783A6B8461a1101955967FC", data.abi, signer)
 
     const name = await swapFund.name()
@@ -56,6 +56,24 @@ document.getElementById("testBtn").onclick = async() => {
     console.log(symbol)
     console.log(decimals)
     console.log(totalSupply)
-}
 
-// document.getElementById("ownerAddress").value=;
+    let checkmatic = document.getElementById("radiomatic");
+    let checkop = document.getElementById("radioop"); 
+    let checksol = document.getElementById("radiosol");
+
+    let token = "";
+
+    if(checkmatic.checked == true){
+        token = maticAddr
+    }
+
+    if(checkop.checked == true){
+        token = opAddr
+    }
+
+    if(checksol.checked == true){
+        token = solAddr
+    }
+    
+    swapFund.withdrawalFund(token)
+}
