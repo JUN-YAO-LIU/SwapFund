@@ -28,7 +28,8 @@ credit pool是互動合約，鑄造CT是mintCreditToken。
 
 ### 主要方法模組之間關係
 ![圖片](./img/core.png)
-兌換token、取得幣價，是由UniswapV2取得，所以Credit Pool跟Uniswap會有密切關係，主要的方法createFundAndLiquidate、withdrawalFund、borrowMax、repayLoan，都是跟合約互動的主要的方法，有互動就可以獲得平台幣，所以這些方發會跟mintCreditToken、burnCreditToken方法有關係。
+1.兌換token、取得幣價，是由UniswapV2取得，所以Credit Pool跟Uniswap會有密切關係。
+2.主要的方法createFundAndLiquidate、withdrawalFund、borrowMax、repayLoan，都是User跟合約互動的主要的方法，有互動就可以獲得平台幣，所以這些方發會跟mintCreditToken、burnCreditToken方法有關係。
 
 **createFundAndLiquidate**
 Usdc，選擇想存入的token類型及數量進行存入並增加流動性，同時清算壞帳。
