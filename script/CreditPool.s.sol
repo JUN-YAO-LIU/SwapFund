@@ -7,9 +7,9 @@ import { IUniswapV2Pair } from "v2-core/interfaces/IUniswapV2Pair.sol";
 import { IUniswapV2Router01 } from "v2-periphery/interfaces/IUniswapV2Router01.sol";
 import { TestWETH9 } from "../../src/test/TestWETH9.sol";
 import { TestERC20 } from "../../src/test/TestERC20.sol";
-import {SwapFund} from "../src/SwapFund.sol";
+import {CreditPool} from "../src/CreditPool.sol";
 
-contract SwapFundScript is Script {
+contract CreditPoolScript is Script {
 
     address owner = 0x570D01A5Bd431BdC206038f3cff8E17B22AA3662;
 
@@ -123,7 +123,7 @@ contract SwapFundScript is Script {
             block.timestamp+ 1800
         );
 
-       SwapFund swapFund = new SwapFund(address(uniswapV2Factory),address(uniswapV2Router),address(usdc));
+       CreditPool creditPool = new CreditPool(address(uniswapV2Factory),address(uniswapV2Router),address(usdc));
        
         vm.stopBroadcast();
     }

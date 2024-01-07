@@ -2,16 +2,16 @@
 pragma solidity ^0.8.17;
 
 import {Test, console2} from "forge-std/Test.sol";
-import {SwapFund} from "../src/SwapFund.sol";
+import {CreditPool} from "../src/CreditPool.sol";
 import {FlashSwapSetUp} from "./helper/FlashSwapSetUp.sol";
 import {IUniswapV2Factory} from "v2-core/interfaces/IUniswapV2Factory.sol";
 
-contract SwapFundTest is FlashSwapSetUp {
+contract CreditPoolTest is FlashSwapSetUp {
     
     address maker = makeAddr("maker");
     address user1 = makeAddr("user1");
     address user2 = makeAddr("user2");
-    SwapFund swapFund;
+    CreditPool swapFund;
 
     function setUp() public override {
        super.setUp();
@@ -92,7 +92,7 @@ contract SwapFundTest is FlashSwapSetUp {
             block.timestamp
         );
 
-        swapFund = new SwapFund(address(uniswapV2Factory),address(uniswapV2Router),address(usdc));
+        swapFund = new CreditPool(address(uniswapV2Factory),address(uniswapV2Router),address(usdc));
         swapFund.simpleSetPrice(address(op),4);
         swapFund.simpleSetPrice(address(usdc),1); 
         swapFund.simpleSetPrice(address(matic),2);

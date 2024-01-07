@@ -10,7 +10,7 @@ import {ERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.s
 import {TestPrice} from "../src/test/TestPrice.sol";
 // import "../lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 
-contract SwapFund is ERC20 , TestPrice{
+contract CreditPool is ERC20 , TestPrice{
     address public owner;
     uint256 public number;
     address public USDC;
