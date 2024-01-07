@@ -13,6 +13,9 @@
 ### how - 如何做到？
 信用積分的設計。
 
+### 流程
+![圖片](./img/deposit.png)
+
 ## Framework
 
 ### CriditPool合約繼承ERC20
@@ -23,15 +26,23 @@ credit pool是互動合約，鑄造CT是mintCreditToken。
 
 ![圖片](./img/ct01.png)
 
-### 存入token，增加流動性
+### 主要方法模組之間關係
+![圖片](./img/core.png)
+兌換token、取得幣價，是由UniswapV2取得，所以Credit Pool跟Uniswap會有密切關係，主要的方法createFundAndLiquidate、withdrawalFund、borrowMax、repayLoan，都是跟合約互動的主要的方法，有互動就可以獲得平台幣，所以這些方發會跟mintCreditToken、burnCreditToken方法有關係。
 
-### 存入token，增加流動性，同時清算壞帳
+**createFundAndLiquidate**
+Usdc，選擇想存入的token類型及數量進行存入並增加流動性，同時清算壞帳。
 
-### 提領任一token
+**withdrawalFund**
+提領時，只能提領單一幣種，並且只要在Pool裡面有足夠的該token則無手續費。
 
-### 借貸
+範例：存入tokneA tokenB，提領時可以提領TokenC，達到免手續費換幣的效果。
 
-### 還款
+**borrowMax**
+目前設定，當你存入token到pool裡時，才能進行借貸，且只能選擇單一token借貸，而且會一次幫你借出最多數量。
+
+**repayLoan**
+還款的方法。
 
 ## Development
 
@@ -42,6 +53,13 @@ git clone https://github.com/JUN-YAO-LIU/SwapFund.git
 **建置**
 step 1.
 $forge build
+
+
+## Testing
+step 1.
+$forge test
+
+## Usage
 
 **UI測試**
 可以用VS Code 進行前端測試。
@@ -58,11 +76,18 @@ step 3. 開啟localhost/web2/index.html 前端畫面
 control + shift + L
 ![圖片](./img/demoindex.png)
 
+**存入角色**
+1. 準備USDC
+2. 選擇存入時兌換的幣種及數量
+3. 存入
+![圖片](./img/depositDemo.png)
 
+**借貸角色**
+1. pool裡要有存入的資產
+2. 選擇要借出幣種
+3. 同一頁，有還款功能
+![圖片](./img/borrowDemo.png)
 
-
-## Testing
-step 1.
-$forge test
-
-## Usage
+**提領角色**
+1. 選擇要提領的幣種
+![圖片](./img/withdrawalDemo.png)
