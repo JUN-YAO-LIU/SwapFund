@@ -1,0 +1,63 @@
+<!doctype html>
+<html>
+
+<head>
+    <title>Credit Pool</title>
+
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js" type="application/javascript"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
+        crossorigin="anonymous"></script>
+    <script type="module" src="./test.js"></script>
+    <style type="text/css">
+        body {
+            background-color: #f0f0f2;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+
+        }
+
+        .bodyPad {
+            width: 600px;
+            margin: 5em auto;
+            padding: 2em;
+            background-color: #fdfdff;
+            border-radius: 0.5em;
+            box-shadow: 2px 3px 7px 2px rgba(0, 0, 0, 0.02);
+        }
+
+        a:link,
+        a:visited {
+            color: #38488f;
+            text-decoration: none;
+        }
+
+        @media (max-width: 700px) {
+            .bodyPad {
+                margin: 0 auto;
+                width: auto;
+            }
+        }
+    </style>
+</head>
+
+<!-- https://github.com/JUN-YAO-LIU/ERC721-test-TokenPay/blob/main/index.html -->
+
+<body>
+    <div class="bodyPad">
+        <form>
+            <div class="text-right">
+                <button id="mintUSDC" type="button" class="btn btn-secondary mt-3">Mint USDC</button>
+                <button id="testBtn" type="button" class="btn btn-secondary mt-3">Deposit</button>
+            </div>
+        </form>
+    </div>
+</body>
+
+</html>
