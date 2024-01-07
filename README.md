@@ -32,17 +32,21 @@ credit pool是互動合約，鑄造CT是mintCreditToken。
 2. 主要的方法createFundAndLiquidate、withdrawalFund、borrowMax、repayLoan，都是User跟合約互動的主要的方法，有互動就可以獲得平台幣，所以這些方發會跟mintCreditToken、burnCreditToken方法有關係。
 
 **createFundAndLiquidate**
+
 Usdc，選擇想存入的token類型及數量進行存入並增加流動性，同時清算壞帳。
 
 **withdrawalFund**
+
 提領時，只能提領單一幣種，並且只要在Pool裡面有足夠的該token則無手續費。
 
 範例：存入tokneA tokenB，提領時可以提領TokenC，達到免手續費換幣的效果。
 
 **borrowMax**
+
 目前設定，當你存入token到pool裡時，才能進行借貸，且只能選擇單一token借貸，而且會一次幫你借出最多數量。
 
 **repayLoan**
+
 還款的方法。
 
 ## Development
