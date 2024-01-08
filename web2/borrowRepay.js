@@ -1,4 +1,4 @@
-import data from "../out/SwapFund.sol/SwapFund.json" assert { type: 'json' }
+import data from "../out/CreditPool.sol/CreditPool.json" assert { type: 'json' }
 import dataTestERC20 from "../out/TestERC20.sol/TestERC20.json" assert { type: 'json' }
 
 // console.log(testNumber)
